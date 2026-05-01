@@ -47,6 +47,30 @@
           "type": "string",
           "description": "The user's Ayushman Bharat Health Account (ABHA) ID, if available. This field is optional."
         },
+        "bloodGroup": {
+          "type": "string",
+          "description": "Blood group of the user."
+        },
+        "allergies": {
+          "type": "string",
+          "description": "Known allergies."
+        },
+        "medications": {
+          "type": "string",
+          "description": "Currently prescribed medications."
+        },
+        "pastSurgeries": {
+          "type": "string",
+          "description": "History of surgeries."
+        },
+        "existingDiseases": {
+          "type": "string",
+          "description": "Chronic conditions like Diabetes, Hypertension."
+        },
+        "vaccinationNotes": {
+          "type": "string",
+          "description": "Notes on vaccinations."
+        },
         "createdAt": {
           "type": "string",
           "description": "Timestamp when the user profile was created.",
@@ -102,6 +126,10 @@
           "type": "string",
           "description": "Timestamp when the triage assessment was performed.",
           "format": "date-time"
+        },
+        "aiSummary": {
+          "type": "string",
+          "description": "Brief AI summary of the triage."
         },
         "rawAiResponse": {
           "type": "string",
