@@ -22,7 +22,10 @@ import {
   Stethoscope,
   ArrowRight,
   History,
-  MapPin
+  MapPin,
+  Sparkles,
+  MessageCircle,
+  Stethoscope as StethoscopeIcon
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -30,6 +33,7 @@ import { assessSymptoms, type TriageResult, type TriageInput } from "@/lib/triag
 import { useUser, useFirestore, useMemoFirebase, useDoc } from "@/firebase";
 import { collection, doc, serverTimestamp } from "firebase/firestore";
 import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { aiSymptomTriage, type AiSymptomTriageOutput } from "@/ai/flows/ai-symptom-triage-flow";
 
 export default function TriagePage() {
   const { user } = useUser();
@@ -65,6 +69,7 @@ export default function TriagePage() {
 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<TriageResult | null>(null);
+  const [aiResult, setAiResult] = useState<AiSymptomTriageOutput | null>(null);
 
   const handleTriage = async () => {
     if (!formData.symptoms.trim()) {
@@ -77,12 +82,36 @@ export default function TriagePage() {
     }
 
     setLoading(true);
-    // Simulate processing delay for better UX
-    setTimeout(() => {
-      const assessment = assessSymptoms(formData);
-      setResult(assessment);
+    
+    // 1. Primary: Rule-based assessment
+    const assessment = assessSymptoms(formData);
+    setResult(assessment);
+
+    // 2. Secondary: AI Enhancement
+    try {
+      const aiResponse = await aiSymptomTriage({
+        symptoms: formData.symptoms,
+        ruleBasedSeverity: assessment.severity,
+        age: formData.age,
+        duration: formData.duration,
+        redFlags: [
+          formData.hasChestPain ? 'Chest Pain' : null,
+          formData.hasBreathingDifficulty ? 'Breathing Difficulty' : null,
+          formData.hasUnconscious ? 'Fainting/Unconscious' : null,
+          formData.hasSevereBleeding ? 'Severe Bleeding' : null,
+          (formData.spo2 && formData.spo2 < 92) ? 'Low Oxygen' : null,
+        ].filter(Boolean) as string[]
+      });
+      setAiResult(aiResponse);
+    } catch (e) {
+      console.error("AI Triage failed:", e);
+      toast({
+        title: "AI Insight Unavailable",
+        description: "The AI service is currently unavailable, but your rule-based triage is complete.",
+      });
+    } finally {
       setLoading(false);
-    }, 800);
+    }
   };
 
   const saveToHistory = () => {
@@ -96,15 +125,17 @@ export default function TriagePage() {
       assessmentResult: result.severity.toLowerCase(),
       suggestedNextSteps: result.nextSteps,
       assessmentDate: serverTimestamp(),
+      aiSummary: aiResult?.summary || null,
       rawAiResponse: JSON.stringify({
         input: formData,
-        engine: "rule-based-v1"
+        engine: "hybrid-v2",
+        aiOutput: aiResult
       })
     });
 
     toast({
       title: "Saved to History",
-      description: "Your assessment has been added to your health records.",
+      description: "Your assessment and AI insights have been added to your health records.",
     });
   };
 
@@ -123,6 +154,7 @@ export default function TriagePage() {
       spo2: undefined,
     });
     setResult(null);
+    setAiResult(null);
   };
 
   const getSeverityStyles = (severity: string) => {
@@ -147,7 +179,7 @@ export default function TriagePage() {
     <AppShell>
       <div className="max-w-4xl mx-auto space-y-6 pb-12">
         {!result ? (
-          <Card className="border-border bg-card shadow-2xl">
+          <Card className="border-border bg-card shadow-2xl overflow-hidden">
             <CardHeader className="border-b border-border bg-muted/30">
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-2 bg-primary rounded-xl">
@@ -156,7 +188,7 @@ export default function TriagePage() {
                 <CardTitle className="text-2xl font-headline font-bold">Health Assessment</CardTitle>
               </div>
               <CardDescription>
-                Provide details about your symptoms for a rule-based triage assessment.
+                Provide details about your symptoms for a hybrid assessment (Rules + AI).
               </CardDescription>
             </CardHeader>
             <CardContent className="p-6 md:p-8 space-y-8">
@@ -282,17 +314,17 @@ export default function TriagePage() {
                 onClick={handleTriage} 
                 disabled={loading} 
                 size="lg"
-                className="w-full py-7 text-xl font-bold shadow-xl"
+                className="w-full py-7 text-xl font-bold shadow-xl bg-primary hover:bg-primary/90"
               >
                 {loading ? (
                   <>
                     <RefreshCcw className="mr-3 h-6 w-6 animate-spin" />
-                    Running Triage Rules...
+                    AI & Rules Analyzing...
                   </>
                 ) : (
                   <>
                     <Send className="mr-3 h-6 w-6" />
-                    Analyze Symptoms
+                    Run Hybrid Triage
                   </>
                 )}
               </Button>
@@ -300,10 +332,11 @@ export default function TriagePage() {
           </Card>
         ) : (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-500">
+            {/* Rule-Based Primary Result */}
             <Card className={cn("border-2 shadow-2xl overflow-hidden", getSeverityStyles(result.severity))}>
               <CardHeader className="flex flex-row items-center justify-between pb-8">
                 <div className="space-y-2">
-                  <h2 className="text-sm font-bold uppercase tracking-widest opacity-80">Triage Result</h2>
+                  <h2 className="text-sm font-bold uppercase tracking-widest opacity-80">Safety Assessment</h2>
                   <CardTitle className="text-4xl font-headline font-black">{result.label}</CardTitle>
                 </div>
                 <div className="bg-background/20 p-4 rounded-3xl backdrop-blur-sm">
@@ -315,7 +348,7 @@ export default function TriagePage() {
                   <div className="space-y-4">
                     <h3 className="text-xl font-headline font-bold flex items-center gap-2">
                       <AlertTriangle className="h-6 w-6 text-primary" />
-                      Why this status?
+                      Critical Reason
                     </h3>
                     <p className="text-lg leading-relaxed text-muted-foreground">
                       {result.reason}
@@ -324,40 +357,98 @@ export default function TriagePage() {
                   <div className="space-y-4">
                     <h3 className="text-xl font-headline font-bold flex items-center gap-2">
                       <ArrowRight className="h-6 w-6 text-primary" />
-                      Recommended Action
+                      Urgent Recommendation
                     </h3>
                     <p className="text-xl font-medium leading-relaxed">
                       {result.nextSteps}
                     </p>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
 
-                <div className="pt-8 border-t border-border">
-                  <div className="p-6 bg-muted/50 rounded-2xl border border-border">
-                    <h4 className="text-sm font-bold uppercase tracking-tighter text-accent mb-2 flex items-center gap-2">
-                      <ShieldAlert className="h-4 w-4" /> Safety Disclaimer
-                    </h4>
-                    <p className="text-sm text-muted-foreground leading-relaxed italic">
-                      {result.disclaimer}
+            {/* AI Enhancement Section */}
+            {aiResult && (
+              <Card className="border-border bg-card shadow-lg border-l-4 border-l-primary overflow-hidden">
+                <CardHeader className="bg-muted/30 border-b border-border">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-primary" />
+                    <CardTitle className="text-lg font-headline font-bold">AI Insights & Explanation</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6 space-y-6">
+                  <div className="space-y-2">
+                    <p className="text-lg leading-relaxed">{aiResult.summary}</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <h4 className="font-bold text-sm uppercase text-primary flex items-center gap-2">
+                        <Info className="h-4 w-4" /> Things to Monitor
+                      </h4>
+                      <ul className="space-y-2">
+                        {aiResult.possible_concerns.map((item, i) => (
+                          <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                            <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-border shrink-0" />
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="space-y-3">
+                      <h4 className="font-bold text-sm uppercase text-primary flex items-center gap-2">
+                        <MessageCircle className="h-4 w-4" /> Questions for Doctor
+                      </h4>
+                      <ul className="space-y-2">
+                        {aiResult.questions_to_ask_doctor.map((item, i) => (
+                          <li key={i} className="text-sm text-muted-foreground flex items-start gap-2 italic">
+                            "{item}"
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  {aiResult.home_care_if_safe.length > 0 && (
+                     <div className="p-4 bg-primary/5 rounded-xl border border-primary/20">
+                      <h4 className="font-bold text-sm uppercase text-primary mb-2">Supportive Care</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {aiResult.home_care_if_safe.map((item, i) => (
+                          <span key={i} className="text-xs bg-card px-3 py-1.5 rounded-full border border-border">
+                            {item}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="pt-4 border-t border-border">
+                    <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-tighter mb-1">AI Disclaimer</p>
+                    <p className="text-xs text-muted-foreground italic leading-relaxed">
+                      {aiResult.disclaimer}
                     </p>
                   </div>
-                </div>
-              </CardContent>
-              <CardFooter className="bg-muted/30 p-8 flex flex-col md:flex-row gap-4">
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Actions */}
+            <Card className="bg-card border-border shadow-xl">
+              <CardFooter className="p-8 flex flex-col md:flex-row gap-4">
                 <div className="flex flex-col sm:flex-row gap-4 w-full justify-between items-center">
                   <Button variant="outline" size="lg" onClick={resetTriage} className="w-full sm:w-auto font-bold h-14">
-                    <RefreshCcw className="mr-2 h-5 w-5" /> Start New Assessment
+                    <RefreshCcw className="mr-2 h-5 w-5" /> New Assessment
                   </Button>
                   
                   <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                     <Button variant="secondary" size="lg" onClick={saveToHistory} className="h-14 font-bold flex-1 sm:flex-none">
-                      <History className="mr-2 h-5 w-5" /> Save to History
+                      <History className="mr-2 h-5 w-5" /> Save History
                     </Button>
                     
                     {(result.severity === 'RED' || result.severity === 'YELLOW') && (
                       <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground h-14 font-bold flex-1 sm:flex-none">
                         <Link href="/facilities">
-                          <MapPin className="mr-2 h-5 w-5" /> Find Hospitals
+                          <MapPin className="mr-2 h-5 w-5" /> Hospital Navigator
                         </Link>
                       </Button>
                     )}
@@ -372,7 +463,7 @@ export default function TriagePage() {
                   <AlertTriangle className="h-10 w-10 animate-pulse" />
                   <div>
                     <h3 className="text-xl font-bold">Immediate Action Required</h3>
-                    <p className="opacity-90">Call emergency services if help is not nearby.</p>
+                    <p className="opacity-90">Please call emergency services (108/102) right away.</p>
                   </div>
                 </div>
                 <Button variant="secondary" size="lg" className="font-black text-destructive">
