@@ -331,7 +331,7 @@ export default function TriagePage() {
                     <Button variant="secondary" size="lg" onClick={saveToHistory} className="h-14 font-bold flex-1 sm:flex-none"><History className="mr-2 h-5 w-5" /> Save History</Button>
                     {(result.severity === 'RED' || result.severity === 'YELLOW') && (
                       <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground h-14 font-bold flex-1 sm:flex-none">
-                        <Link href="/facilities"><MapPin className="mr-2 h-5 w-5" /> {t('findHospital', activeLang)}</Link>
+                        <Link href={`/facilities?type=${result.severity === 'RED' ? 'emergency' : 'all'}`}><MapPin className="mr-2 h-5 w-5" /> {t('findHospital', activeLang)}</Link>
                       </Button>
                     )}
                   </div>
@@ -342,7 +342,9 @@ export default function TriagePage() {
             {result.severity === 'RED' && (
               <div className="p-6 bg-destructive text-destructive-foreground rounded-2xl flex items-center justify-between shadow-xl">
                 <div className="flex items-center gap-4"><AlertTriangle className="h-10 w-10 animate-pulse" /><div><h3 className="text-xl font-bold">Immediate Action</h3><p className="opacity-90">Please call 108/102 right away.</p></div></div>
-                <Button variant="secondary" size="lg" className="font-black text-destructive">{t('emergency', activeLang)} 108</Button>
+                <Button variant="secondary" size="lg" className="font-black text-destructive" asChild>
+                  <a href="tel:108">{t('emergency', activeLang)} 108</a>
+                </Button>
               </div>
             )}
           </div>
