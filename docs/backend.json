@@ -175,6 +175,23 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "userId", "userName", "status", "createdAt"]
+    },
+    "PreventiveHealthAssessment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PreventiveHealthAssessment",
+      "type": "object",
+      "description": "Stores user lifestyle analytics and risk scores.",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "bmi": { "type": "number" },
+        "wellnessScore": { "type": "number" },
+        "diabetesRisk": { "type": "string", "enum": ["Low", "Moderate", "High"] },
+        "cardiacRisk": { "type": "string", "enum": ["Low", "Moderate", "High"] },
+        "assessmentDate": { "type": "string", "format": "date-time" },
+        "inputData": { "type": "object" }
+      },
+      "required": ["id", "userId", "bmi", "wellnessScore", "diabetesRisk", "cardiacRisk", "assessmentDate"]
     }
   },
   "auth": {
@@ -213,6 +230,16 @@
             "$ref": "#/backend/entities/DoctorSummary"
           },
           "description": "Stores professional summaries shared with doctors."
+        }
+      },
+      {
+        "path": "/users/{userId}/preventiveAssessments/{assessmentId}",
+        "definition": {
+          "entityName": "PreventiveHealthAssessment",
+          "schema": {
+            "$ref": "#/backend/entities/PreventiveHealthAssessment"
+          },
+          "description": "Stores preventive health history."
         }
       },
       {
