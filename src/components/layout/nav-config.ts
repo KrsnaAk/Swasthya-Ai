@@ -1,5 +1,5 @@
 
-import { LayoutDashboard, Stethoscope, MapPin, History, User, AlertCircle, FileHeart, Activity } from "lucide-react";
+import { LayoutDashboard, Stethoscope, MapPin, History, User, AlertCircle, FileHeart, Activity, BarChart3 } from "lucide-react";
 
 export const navItems = [
   {
@@ -31,6 +31,11 @@ export const navItems = [
     title: "Facility Finder",
     href: "/facilities",
     icon: MapPin,
+  },
+  {
+    title: "Public Health Trends",
+    href: "/public-health",
+    icon: BarChart3,
   },
   {
     title: "Unified History",
