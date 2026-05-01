@@ -1,0 +1,98 @@
+/**
+ * SwasthyaAI Firestore Security Rules
+ * 
+ * Core Philosophy:
+ * This ruleset implements a strict user-ownership model. Every piece of data is tied to a 
+ * specific Firebase Authentication UID. Access is restricted such that users can only 
+ * interact with their own profile and their own assessment history.
+ * 
+ * Data Structure:
+ * - /users/{userId}: Root collection for UserProfile documents. The document ID is the user's UID.
+ * - /users/{userId}/triageAssessments/{triageId}: Subcollection storing AI triage results for a specific user.
+ * 
+ * Key Security Decisions:
+ * - Ownership Enforcement: All writes (create, update, delete) and reads (get, list) are gated 
+ *   by checking that the requested path's {userId} matches the authenticated requester's UID.
+ * - Self-Creation: Users are permitted to create their own UserProfile document exactly once 
+ *   provided the document ID and internal 'id' field match their UID.
+ * - Relational Integrity: On creation and update, the rules enforce that ownership fields 
+ *   (like 'userId' in assessments) are correctly set and immutable, preventing data from 
+ *   being "orphaned" or reassigned to other users.
+ * - Prototyping Flexibility: While authorization is strictly enforced, the rules do not 
+ *   validate specific data types (e.g., strings vs ints) or non-relational fields, 
+ *   allowing the application schema to evolve rapidly.
+ */
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Helper Functions ---
+
+    /**
+     * @description Checks if the user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Checks if the authenticated user's UID matches the provided userId.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * @description Checks ownership and ensures the resource exists for destructive operations.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Validates that the internal ID matches the path ID on creation.
+     */
+    function isValidIdOnCreate(fieldId, pathId) {
+      return request.resource.data[fieldId] == pathId;
+    }
+
+    /**
+     * @description Enforces immutability of the ownership/linkage field during updates.
+     */
+    function isIdImmutable(fieldId) {
+      return request.resource.data[fieldId] == resource.data[fieldId];
+    }
+
+    // --- Collection Rules ---
+
+    /**
+     * @description Rules for the UserProfile collection.
+     * @path /users/{userId}
+     * @allow (get/list) User reading their own profile.
+     * @allow (create) New user creating their initial profile doc.
+     * @deny (list) Anonymous listing of all users.
+     * @principle Pattern 1 (Ownership) & Pattern 4 (Self-Creation).
+     */
+    match /users/{userId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidIdOnCreate('id', userId);
+      allow update: if isExistingOwner(userId) && isIdImmutable('id');
+      allow delete: if isExistingOwner(userId);
+
+      /**
+       * @description Rules for chronological AI triage assessments.
+       * @path /users/{userId}/triageAssessments/{triageId}
+       * @allow (create) User saving a new AI assessment result.
+       * @deny (update) User trying to change the userId of an existing assessment.
+       * @principle Pattern 1 (Ownership) via path and denormalized field validation.
+       */
+      match /triageAssessments/{triageId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidIdOnCreate('userId', userId);
+        allow update: if isExistingOwner(userId) && isIdImmutable('userId');
+        allow delete: if isExistingOwner(userId);
+      }
+    }
+  }
+}
