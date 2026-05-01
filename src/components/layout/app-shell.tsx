@@ -1,9 +1,9 @@
 
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { 
   Sidebar, 
   SidebarContent, 
@@ -18,10 +18,39 @@ import {
 } from "@/components/ui/sidebar";
 import { navItems } from "./nav-config";
 import { Button } from "@/components/ui/button";
-import { HeartPulse, LogOut } from "lucide-react";
+import { HeartPulse, LogOut, Loader2 } from "lucide-react";
+import { useAuth, useUser } from "@/firebase";
+import { signOut } from "firebase/auth";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, isUserLoading } = useUser();
+  const auth = useAuth();
+
+  useEffect(() => {
+    if (!isUserLoading && !user && pathname !== '/login' && pathname !== '/signup' && pathname !== '/forgot-password') {
+      router.push('/login');
+    }
+  }, [user, isUserLoading, pathname, router]);
+
+  const handleSignOut = async () => {
+    await signOut(auth);
+    router.push('/login');
+  };
+
+  if (isUserLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Allow public access to auth pages without shell if needed, 
+  // but usually AppShell is wrapped around protected content.
+  const isAuthPage = ['/login', '/signup', '/forgot-password'].includes(pathname);
+  if (isAuthPage) return <>{children}</>;
 
   return (
     <SidebarProvider>
@@ -48,7 +77,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </SidebarMenu>
           </SidebarContent>
           <SidebarFooter className="p-4 border-t border-border">
-            <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground">
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+              onClick={handleSignOut}
+            >
               <LogOut className="h-5 w-5" />
               <span>Sign Out</span>
             </Button>
