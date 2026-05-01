@@ -93,10 +93,12 @@ export default function DashboardPage() {
                   <div className="bg-accent rounded-full p-2">
                     <AlertCircle className="h-5 w-5 text-accent-foreground" />
                   </div>
-                  <span className="font-headline font-semibold">Quick SOS</span>
+                  <span className="font-headline font-semibold text-accent">Quick SOS</span>
                 </div>
-                <p className="text-sm text-muted-foreground mb-4">Call local emergency services immediately in case of severe distress.</p>
-                <Button variant="destructive" className="w-full font-bold">CALL 102 / 108</Button>
+                <p className="text-sm text-muted-foreground mb-4 leading-relaxed">Broadcast an emergency alert to your contact and services.</p>
+                <Button variant="destructive" asChild className="w-full font-bold h-12">
+                  <Link href="/sos">OPEN SOS PANEL</Link>
+                </Button>
               </div>
             </div>
           </div>
@@ -169,7 +171,7 @@ export default function DashboardPage() {
           </Card>
         </div>
 
-        {/* History Preview (Static for now, but personalized context added) */}
+        {/* History Preview */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-headline font-semibold">Triage History</h3>
@@ -184,12 +186,12 @@ export default function DashboardPage() {
                   <Calendar className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div>
-                  <p className="font-medium">No recent triage sessions</p>
-                  <p className="text-xs text-muted-foreground">Start an assessment to see your history here.</p>
+                  <p className="font-medium">Recent Triage Assessment</p>
+                  <p className="text-xs text-muted-foreground">View your stored clinical evaluations here.</p>
                 </div>
               </div>
               <Button variant="ghost" size="icon" asChild>
-                <Link href="/triage"><ArrowRight className="h-4 w-4" /></Link>
+                <Link href="/history"><ArrowRight className="h-4 w-4" /></Link>
               </Button>
             </div>
           </div>

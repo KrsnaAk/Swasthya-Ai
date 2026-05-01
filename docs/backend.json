@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -83,19 +84,19 @@
         },
         "userId": {
           "type": "string",
-          "description": "Reference to the UserProfile who performed this assessment. (Relationship: UserProfile 1:N TriageAssessment)"
+          "description": "Reference to the UserProfile who performed this assessment."
         },
         "symptomsInput": {
           "type": "string",
-          "description": "The raw text input of symptoms provided by the user (either typed or speech-to-text transcription)."
+          "description": "The raw text input of symptoms provided by the user."
         },
         "assessmentResult": {
           "type": "string",
-          "description": "The AI's suggested severity and next steps (e.g., 'home care', 'clinic visit', 'emergency', 'hospital')."
+          "description": "The AI's suggested severity and next steps."
         },
         "suggestedNextSteps": {
           "type": "string",
-          "description": "Detailed natural language recommendations provided by the AI based on the assessment result."
+          "description": "Detailed natural language recommendations provided by the AI."
         },
         "assessmentDate": {
           "type": "string",
@@ -104,7 +105,7 @@
         },
         "rawAiResponse": {
           "type": "string",
-          "description": "Optional raw JSON or text response from the AI model for auditing or detailed analysis."
+          "description": "Optional raw JSON or text response from the AI model."
         }
       },
       "required": [
@@ -115,6 +116,23 @@
         "suggestedNextSteps",
         "assessmentDate"
       ]
+    },
+    "SOSAlert": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SOSAlert",
+      "type": "object",
+      "description": "Represents an active emergency alert triggered by a user.",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "locationLat": { "type": "number" },
+        "locationLng": { "type": "number" },
+        "status": { "type": "string", "enum": ["active", "resolved"] },
+        "emergencyContact": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "userName", "status", "createdAt"]
     }
   },
   "auth": {
@@ -132,13 +150,7 @@
           "schema": {
             "$ref": "#/backend/entities/UserProfile"
           },
-          "description": "Stores individual user profiles. The `UserProfile.id` field matches the Firebase Authentication UID (`userId` from the path). Access is restricted to the user whose `uid` matches `userId` in the path, ensuring strong ownership-based security. No denormalized authorization fields are required as ownership is path-based and implicit for single user profile access.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The Firebase Authentication UID of the user, serving as the document ID."
-            }
-          ]
+          "description": "Stores individual user profiles."
         }
       },
       {
@@ -148,20 +160,19 @@
           "schema": {
             "$ref": "#/backend/entities/TriageAssessment"
           },
-          "description": "Stores a chronological record of AI triage assessments performed by a specific user. Each `TriageAssessment` document includes the `userId` field, which is explicitly denormalized from the parent user. This ensures authorization independence by allowing rules to verify ownership without requiring a `get()` call to the parent document. Access is restricted to the user whose `uid` matches `userId` in the path, supporting secure listing of a user's own assessment history.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The Firebase Authentication UID of the user who performed the assessment, linking it to the parent UserProfile."
-            },
-            {
-              "name": "triageId",
-              "description": "The unique identifier for a specific triage assessment."
-            }
-          ]
+          "description": "Stores a chronological record of AI triage assessments."
+        }
+      },
+      {
+        "path": "/sos_alerts/{alertId}",
+        "definition": {
+          "entityName": "SOSAlert",
+          "schema": {
+            "$ref": "#/backend/entities/SOSAlert"
+          },
+          "description": "Root collection for active emergency alerts."
         }
       }
-    ],
-    "reasoning": "The recommended Firestore structure prioritizes secure, scalable, and debuggable authorization by adhering to the core design principles, especially Authorization Independence and Structural Segregation.\n\n1.  **User Profiles (`/users/{userId}`):**\n    *   **Path:** `/users/{userId}`\n    *   **Entity:** `UserProfile`\n    *   **Authorization Independence:** The `UserProfile` document itself is identified by the Firebase Authentication UID (`userId` parameter). The document's `id` field will explicitly store this `uid`. This makes authorization inherently independent as `request.auth.uid` must match `userId` for read/write access. There are no `get()` calls to parent documents needed to determine access.\n    *   **Structural Segregation:** Each user's profile is a private document, accessible only by the owning user. This maintains a homogeneous security posture for all documents within the `/users` collection, where each document represents a unique, private user profile.\n    *   **QAPs (Queries as Authorization Predicates):** A user can securely read or update their own profile by specifying `users/$(request.auth.uid)`. Listing of all user profiles would be inherently disallowed or strictly managed by an admin role (not defined in this scope), as it requires matching `request.auth.uid` to the specific `userId` in the path, preventing unauthorized `list` operations from revealing other users' data.\n\n2.  **Triage Assessments (`/users/{userId}/triageAssessments/{triageId}`):**\n    *   **Path:** `/users/{userId}/triageAssessments/{triageId}`\n    *   **Entity:** `TriageAssessment`\n    *   **Authorization Independence:** Each `TriageAssessment` document is stored as a subcollection under the specific `UserProfile` that created it. Crucially, the `TriageAssessment` document includes a `userId` field that explicitly stores the ID of the owning user. This denormalization means that even though it's a subcollection, its authorization does not depend on reading the parent `UserProfile` document. Rules can simply check `request.auth.uid == userId` (from the path) and also optionally verify `request.auth.uid == resource.data.userId` (from the document itself) without a `get()` call.\n    *   **Structural Segregation:** All documents within a user's `/triageAssessments` subcollection are private to that user. This creates a clear boundary and simplifies security rules, as all documents in this subcollection share the same access requirements.\n    *   **QAPs (Queries as Authorization Predicates):** A user can securely `list` all their past triage assessments by querying `/users/$(request.auth.uid)/triageAssessments`. The security rules will enforce `request.auth.uid == userId` (the parent parameter), ensuring that a user can only list *their own* assessments. This structure prevents unauthorized users from performing wide `list` queries across all triage assessments and effectively supports QAPs for retrieving personal history."
+    ]
   }
 }
