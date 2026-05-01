@@ -145,6 +145,20 @@
         "assessmentDate"
       ]
     },
+    "DoctorSummary": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "DoctorSummary",
+      "type": "object",
+      "description": "Professional medical summary generated for consultation.",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "summaryText": { "type": "string" },
+        "triageRef": { "type": "string", "description": "Optional reference to a specific triage ID." },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "summaryText", "createdAt"]
+    },
     "SOSAlert": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "SOSAlert",
@@ -189,6 +203,16 @@
             "$ref": "#/backend/entities/TriageAssessment"
           },
           "description": "Stores a chronological record of AI triage assessments."
+        }
+      },
+      {
+        "path": "/users/{userId}/doctorSummaries/{summaryId}",
+        "definition": {
+          "entityName": "DoctorSummary",
+          "schema": {
+            "$ref": "#/backend/entities/DoctorSummary"
+          },
+          "description": "Stores professional summaries shared with doctors."
         }
       },
       {

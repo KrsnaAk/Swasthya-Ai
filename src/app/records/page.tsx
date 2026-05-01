@@ -20,13 +20,15 @@ import {
   CheckCircle2,
   Syringe,
   Stethoscope,
-  Heart
+  Heart,
+  Share2
 } from "lucide-react";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc, serverTimestamp } from "firebase/firestore";
 import { updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { DoctorSummaryDialog } from "@/components/DoctorSummaryDialog";
 
 export default function RecordsPage() {
   const { user } = useUser();
@@ -120,15 +122,37 @@ export default function RecordsPage() {
             <h1 className="text-3xl font-headline font-bold">Health Records (ABHA)</h1>
             <p className="text-muted-foreground italic">Maintain your digital health ID for faster clinical decisions.</p>
           </div>
-          <Button 
-            variant="secondary" 
-            className="gap-2 bg-primary/10 text-primary hover:bg-primary/20"
-            onClick={syncABHA}
-            disabled={isSyncing}
-          >
-            {isSyncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-            Sync with ABHA Portal
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button 
+              variant="secondary" 
+              className="gap-2 bg-primary/10 text-primary hover:bg-primary/20"
+              onClick={syncABHA}
+              disabled={isSyncing}
+            >
+              {isSyncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              Sync with ABHA Portal
+            </Button>
+            {profile && user && (
+              <DoctorSummaryDialog 
+                userId={user.uid}
+                input={{
+                  profile: {
+                    name: profile.name,
+                    age: profile.age,
+                    gender: profile.gender,
+                    abhaId: profile.abhaId,
+                    bloodGroup: profile.bloodGroup
+                  },
+                  medicalContext: {
+                    allergies: formData.allergies,
+                    existingDiseases: formData.existingDiseases,
+                    medications: formData.medications,
+                    pastSurgeries: formData.pastSurgeries
+                  }
+                }}
+              />
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

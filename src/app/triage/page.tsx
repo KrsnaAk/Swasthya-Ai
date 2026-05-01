@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -28,7 +29,8 @@ import {
   MessageCircle,
   Mic,
   MicOff,
-  Languages
+  Languages,
+  FileText
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -40,6 +42,7 @@ import { aiSymptomTriage, type AiSymptomTriageOutput } from "@/ai/flows/ai-sympt
 import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
 import { SUPPORTED_LANGUAGES } from "@/lib/languages";
 import { t } from "@/lib/translations";
+import { DoctorSummaryDialog } from "@/components/DoctorSummaryDialog";
 
 export default function TriagePage() {
   const { user } = useUser();
@@ -326,7 +329,45 @@ export default function TriagePage() {
             <Card className="bg-card border-border shadow-xl">
               <CardFooter className="p-8 flex flex-col md:flex-row gap-4">
                 <div className="flex flex-col sm:flex-row gap-4 w-full justify-between items-center">
-                  <Button variant="outline" size="lg" onClick={resetTriage} className="w-full sm:w-auto font-bold h-14"><RefreshCcw className="mr-2 h-5 w-5" /> New Assessment</Button>
+                  <div className="flex flex-wrap gap-3 w-full sm:w-auto">
+                    <Button variant="outline" size="lg" onClick={resetTriage} className="font-bold h-14"><RefreshCcw className="mr-2 h-5 w-5" /> New Assessment</Button>
+                    {profile && user && (
+                      <DoctorSummaryDialog 
+                        userId={user.uid}
+                        input={{
+                          profile: {
+                            name: profile.name,
+                            age: profile.age,
+                            gender: profile.gender,
+                            abhaId: profile.abhaId,
+                            bloodGroup: profile.bloodGroup
+                          },
+                          medicalContext: {
+                            allergies: profile.allergies,
+                            existingDiseases: profile.existingDiseases,
+                            medications: profile.medications,
+                            pastSurgeries: profile.pastSurgeries
+                          },
+                          currentTriage: {
+                            symptoms: formData.symptoms,
+                            severity: result.severity,
+                            duration: formData.duration,
+                            redFlags: [
+                              formData.hasChestPain ? 'Chest Pain' : null,
+                              formData.hasBreathingDifficulty ? 'Breathing Difficulty' : null,
+                              formData.hasUnconscious ? 'Unconscious' : null,
+                              formData.hasSevereBleeding ? 'Severe Bleeding' : null,
+                            ].filter(Boolean) as string[]
+                          }
+                        }}
+                        trigger={
+                          <Button variant="secondary" size="lg" className="h-14 font-bold bg-primary/10 text-primary">
+                            <FileText className="mr-2 h-5 w-5" /> Generate Summary
+                          </Button>
+                        }
+                      />
+                    )}
+                  </div>
                   <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                     <Button variant="secondary" size="lg" onClick={saveToHistory} className="h-14 font-bold flex-1 sm:flex-none"><History className="mr-2 h-5 w-5" /> Save History</Button>
                     {(result.severity === 'RED' || result.severity === 'YELLOW') && (
