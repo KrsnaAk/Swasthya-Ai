@@ -1,0 +1,23 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "hero-bg",
+      "description": "Modern healthcare technology background",
+      "imageUrl": "https://picsum.photos/seed/healthcare/1200/800",
+      "imageHint": "modern medical technology"
+    },
+    {
+      "id": "hospital-map",
+      "description": "Interactive map showing nearby clinics",
+      "imageUrl": "https://picsum.photos/seed/map/800/600",
+      "imageHint": "city map hospitals"
+    },
+    {
+      "id": "health-checkup",
+      "description": "Preventive healthcare information",
+      "imageUrl": "https://picsum.photos/seed/checkup/400/300",
+      "imageHint": "doctor consultation"
+    }
+  ]
+}
