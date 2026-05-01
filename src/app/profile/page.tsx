@@ -1,18 +1,18 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { AppShell } from "@/components/layout/app-shell";
 import { useUser, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, User, Save, ShieldCheck } from 'lucide-react';
+import { Loader2, User, Save, ShieldCheck, Languages } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { SUPPORTED_LANGUAGES } from '@/lib/languages';
 
 export default function ProfilePage() {
   const { user, isUserLoading } = useUser();
@@ -45,7 +45,6 @@ export default function ProfilePage() {
   const handleSave = () => {
     if (!userDocRef || !formData) return;
     
-    // Optimistic update
     updateDocumentNonBlocking(userDocRef, {
       ...formData,
       updatedAt: serverTimestamp(),
@@ -103,7 +102,7 @@ export default function ProfilePage() {
               <div className="flex justify-between items-center text-sm border-t border-border pt-4">
                 <span className="text-muted-foreground">Member Since</span>
                 <span className="font-medium">
-                  {formData.createdAt ? new Date(formData.createdAt?.seconds * 1000).toLocaleDateString() : 'N/A'}
+                   {formData.createdAt ? new Date(formData.createdAt?.seconds * 1000).toLocaleDateString() : 'N/A'}
                 </span>
               </div>
               <div className="p-4 bg-primary/10 rounded-xl border border-primary/20 space-y-2">
@@ -126,6 +125,23 @@ export default function ProfilePage() {
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
                 <Input id="name" value={formData.name} onChange={handleInputChange} disabled={!isEditing} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="preferredLanguage">Preferred Language</Label>
+                <Select 
+                  value={formData.preferredLanguage || 'en'} 
+                  onValueChange={(v) => handleSelectChange('preferredLanguage', v)}
+                  disabled={!isEditing}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Language" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SUPPORTED_LANGUAGES.map((lang) => (
+                      <SelectItem key={lang.code} value={lang.code}>{lang.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone Number</Label>
