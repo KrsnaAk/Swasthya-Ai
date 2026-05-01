@@ -1,197 +1,385 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Mic, Send, Info, RefreshCcw, AlertTriangle, ShieldAlert, Home, Building2, HelpCircle, Stethoscope } from "lucide-react";
-import { aiSymptomTriage, type AiSymptomTriageOutput } from "@/ai/flows/ai-symptom-triage-flow";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
+import { 
+  Send, 
+  Info, 
+  RefreshCcw, 
+  AlertTriangle, 
+  ShieldAlert, 
+  Home, 
+  Building2, 
+  HelpCircle, 
+  Stethoscope,
+  ArrowRight,
+  History,
+  MapPin
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { assessSymptoms, type TriageResult, type TriageInput } from "@/lib/triage-engine";
+import { useUser, useFirestore, useMemoFirebase, useDoc } from "@/firebase";
+import { collection, doc, serverTimestamp } from "firebase/firestore";
+import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 export default function TriagePage() {
-  const [symptoms, setSymptoms] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<AiSymptomTriageOutput | null>(null);
-  const [recording, setRecording] = useState(false);
+  const { user } = useUser();
+  const db = useFirestore();
   const { toast } = useToast();
 
+  const userDocRef = useMemoFirebase(() => {
+    if (!db || !user?.uid) return null;
+    return doc(db, 'users', user.uid);
+  }, [db, user?.uid]);
+
+  const { data: profile } = useDoc(userDocRef);
+
+  const [formData, setFormData] = useState<TriageInput>({
+    symptoms: "",
+    duration: 1,
+    age: 30,
+    existingConditions: "",
+    painSeverity: 1,
+    hasFever: false,
+    hasBreathingDifficulty: false,
+    hasChestPain: false,
+    hasUnconscious: false,
+    hasSevereBleeding: false,
+    spo2: undefined,
+  });
+
+  useEffect(() => {
+    if (profile?.age) {
+      setFormData(prev => ({ ...prev, age: profile.age }));
+    }
+  }, [profile]);
+
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<TriageResult | null>(null);
+
   const handleTriage = async () => {
-    if (!symptoms.trim()) {
+    if (!formData.symptoms.trim()) {
       toast({
-        title: "Empty Symptoms",
-        description: "Please describe how you are feeling.",
+        title: "Information Required",
+        description: "Please describe your symptoms briefly.",
         variant: "destructive"
       });
       return;
     }
 
     setLoading(true);
-    try {
-      const output = await aiSymptomTriage({ symptoms });
-      setResult(output);
-    } catch (error) {
-      toast({
-        title: "Analysis Failed",
-        description: "We couldn't process your request. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
+    // Simulate processing delay for better UX
+    setTimeout(() => {
+      const assessment = assessSymptoms(formData);
+      setResult(assessment);
       setLoading(false);
-    }
+    }, 800);
+  };
+
+  const saveToHistory = () => {
+    if (!db || !user?.uid || !result) return;
+
+    const triageColRef = collection(db, 'users', user.uid, 'triageAssessments');
+    
+    addDocumentNonBlocking(triageColRef, {
+      userId: user.uid,
+      symptomsInput: formData.symptoms,
+      assessmentResult: result.severity.toLowerCase(),
+      suggestedNextSteps: result.nextSteps,
+      assessmentDate: serverTimestamp(),
+      rawAiResponse: JSON.stringify({
+        input: formData,
+        engine: "rule-based-v1"
+      })
+    });
+
+    toast({
+      title: "Saved to History",
+      description: "Your assessment has been added to your health records.",
+    });
   };
 
   const resetTriage = () => {
-    setSymptoms("");
+    setFormData({
+      symptoms: "",
+      duration: 1,
+      age: profile?.age || 30,
+      existingConditions: "",
+      painSeverity: 1,
+      hasFever: false,
+      hasBreathingDifficulty: false,
+      hasChestPain: false,
+      hasUnconscious: false,
+      hasSevereBleeding: false,
+      spo2: undefined,
+    });
     setResult(null);
+  };
+
+  const getSeverityStyles = (severity: string) => {
+    switch (severity) {
+      case 'RED': return "bg-destructive/10 border-destructive text-destructive";
+      case 'YELLOW': return "bg-primary/10 border-primary text-primary";
+      case 'GREEN': return "bg-green-500/10 border-green-500 text-green-500";
+      default: return "bg-muted border-border text-muted-foreground";
+    }
   };
 
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
-      case 'emergency': return <ShieldAlert className="h-10 w-10 text-destructive" />;
-      case 'hospital': return <Building2 className="h-10 w-10 text-accent" />;
-      case 'clinic visit': return <Building2 className="h-10 w-10 text-primary" />;
-      case 'home care': return <Home className="h-10 w-10 text-green-500" />;
-      default: return <HelpCircle className="h-10 w-10 text-muted-foreground" />;
+      case 'RED': return <ShieldAlert className="h-12 w-12" />;
+      case 'YELLOW': return <Building2 className="h-12 w-12" />;
+      case 'GREEN': return <Home className="h-12 w-12" />;
+      default: return <HelpCircle className="h-12 w-12" />;
     }
   };
 
   return (
     <AppShell>
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-4xl mx-auto space-y-6 pb-12">
         {!result ? (
-          <Card className="border-border bg-card shadow-xl overflow-hidden">
-            <CardHeader className="bg-primary/5 border-b border-border pb-8">
+          <Card className="border-border bg-card shadow-2xl">
+            <CardHeader className="border-b border-border bg-muted/30">
               <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 bg-primary rounded-lg">
+                <div className="p-2 bg-primary rounded-xl">
                   <Stethoscope className="h-6 w-6 text-primary-foreground" />
                 </div>
-                <CardTitle className="text-2xl font-headline">AI Symptom Triage</CardTitle>
+                <CardTitle className="text-2xl font-headline font-bold">Health Assessment</CardTitle>
               </div>
-              <CardDescription className="text-base">
-                Describe your symptoms in detail. You can use text or voice input. Our AI will guide you on the next steps.
+              <CardDescription>
+                Provide details about your symptoms for a rule-based triage assessment.
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-8 space-y-6">
-              <div className="relative">
+            <CardContent className="p-6 md:p-8 space-y-8">
+              {/* Symptoms Text */}
+              <div className="space-y-3">
+                <Label htmlFor="symptoms" className="text-lg font-semibold">Describe your symptoms</Label>
                 <Textarea 
-                  placeholder="e.g., I have a persistent headache and feel nauseous since this morning..."
-                  className="min-h-[200px] text-lg p-6 bg-background/50 border-2 border-border focus:border-primary transition-all resize-none"
-                  value={symptoms}
-                  onChange={(e) => setSymptoms(e.target.value)}
-                  disabled={loading}
+                  id="symptoms"
+                  placeholder="Describe how you are feeling (e.g., Sharp pain in lower back, persistent cough...)"
+                  className="min-h-[120px] bg-background"
+                  value={formData.symptoms}
+                  onChange={(e) => setFormData({ ...formData, symptoms: e.target.value })}
                 />
-                <div className="absolute bottom-4 right-4 flex items-center gap-2">
-                  <Button 
-                    variant={recording ? "destructive" : "secondary"}
-                    size="icon" 
-                    className={cn("rounded-full h-12 w-12", recording && "animate-pulse")}
-                    onClick={() => {
-                      setRecording(!recording);
-                      if (!recording) {
-                        toast({ title: "Voice Input", description: "Listening... (Simulated)" });
-                      }
-                    }}
-                    disabled={loading}
-                  >
-                    <Mic className="h-6 w-6" />
-                  </Button>
+              </div>
+
+              {/* Basic Info Row */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <Label htmlFor="duration">Duration (Days)</Label>
+                  <Input 
+                    id="duration" 
+                    type="number" 
+                    value={formData.duration} 
+                    onChange={(e) => setFormData({...formData, duration: Number(e.target.value)})}
+                  />
+                </div>
+                <div className="space-y-3">
+                  <Label htmlFor="age">Patient Age</Label>
+                  <Input 
+                    id="age" 
+                    type="number" 
+                    value={formData.age} 
+                    onChange={(e) => setFormData({...formData, age: Number(e.target.value)})}
+                  />
                 </div>
               </div>
-              
-              <div className="flex items-start gap-3 p-4 bg-muted rounded-xl text-sm text-muted-foreground border border-border">
-                <Info className="h-5 w-5 shrink-0 text-primary" />
+
+              {/* Pain Severity Slider */}
+              <div className="space-y-4 pt-2">
+                <div className="flex justify-between items-center">
+                  <Label className="text-base font-semibold">Pain Severity (1-10)</Label>
+                  <span className={cn(
+                    "font-bold text-lg px-3 py-1 rounded-md",
+                    formData.painSeverity >= 8 ? "bg-destructive text-white" :
+                    formData.painSeverity >= 4 ? "bg-primary text-primary-foreground" : "bg-muted"
+                  )}>
+                    {formData.painSeverity}
+                  </span>
+                </div>
+                <Slider 
+                  value={[formData.painSeverity]} 
+                  max={10} 
+                  step={1} 
+                  onValueChange={(vals) => setFormData({...formData, painSeverity: vals[0]})}
+                />
+                <div className="flex justify-between text-xs text-muted-foreground font-mono">
+                  <span>MILD</span>
+                  <span>MODERATE</span>
+                  <span>SEVERE</span>
+                </div>
+              </div>
+
+              {/* Red Flag Toggles */}
+              <div className="space-y-4 pt-4 border-t border-border">
+                <h3 className="text-sm font-bold text-primary uppercase tracking-wider">Check if applicable:</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="fever">Fever</Label>
+                    <Switch id="fever" checked={formData.hasFever} onCheckedChange={(v) => setFormData({...formData, hasFever: v})} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="breathing">Difficulty Breathing</Label>
+                    <Switch id="breathing" checked={formData.hasBreathingDifficulty} onCheckedChange={(v) => setFormData({...formData, hasBreathingDifficulty: v})} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="chest-pain">Chest Pain</Label>
+                    <Switch id="chest-pain" checked={formData.hasChestPain} onCheckedChange={(v) => setFormData({...formData, hasChestPain: v})} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="unconscious">Fainting / Unconscious</Label>
+                    <Switch id="unconscious" checked={formData.hasUnconscious} onCheckedChange={(v) => setFormData({...formData, hasUnconscious: v})} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="bleeding">Severe Bleeding</Label>
+                    <Switch id="bleeding" checked={formData.hasSevereBleeding} onCheckedChange={(v) => setFormData({...formData, hasSevereBleeding: v})} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Additional Inputs */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                <div className="space-y-3">
+                  <Label htmlFor="conditions">Existing Medical Conditions</Label>
+                  <Input 
+                    id="conditions" 
+                    placeholder="e.g. Hypertension, Diabetes" 
+                    value={formData.existingConditions}
+                    onChange={(e) => setFormData({...formData, existingConditions: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-3">
+                  <Label htmlFor="spo2">Oxygen Saturation (SpO2 % - optional)</Label>
+                  <Input 
+                    id="spo2" 
+                    type="number" 
+                    placeholder="e.g. 98" 
+                    value={formData.spo2 || ''}
+                    onChange={(e) => setFormData({...formData, spo2: e.target.value ? Number(e.target.value) : undefined})}
+                  />
+                </div>
+              </div>
+
+              {/* Important Disclaimer */}
+              <div className="flex items-start gap-3 p-4 bg-accent/5 rounded-xl text-sm text-muted-foreground border border-accent/20">
+                <Info className="h-5 w-5 shrink-0 text-accent" />
                 <p>
-                  <strong>Disclaimer:</strong> This tool provides preliminary guidance only and is <strong>not a medical diagnosis</strong>. In case of severe chest pain, difficulty breathing, or other life-threatening symptoms, call emergency services immediately.
+                  <strong>Urgent:</strong> If you are experiencing sudden confusion, extreme weakness, or paralysis, seek help immediately without completing this form.
                 </p>
               </div>
             </CardContent>
-            <CardFooter className="p-8 pt-0 flex justify-end">
+            <CardFooter className="p-6 md:p-8 pt-0 flex justify-end">
               <Button 
                 onClick={handleTriage} 
                 disabled={loading} 
                 size="lg"
-                className="w-full md:w-auto px-12 py-6 text-lg font-bold bg-primary hover:bg-primary/90 text-primary-foreground"
+                className="w-full py-7 text-xl font-bold shadow-xl"
               >
                 {loading ? (
-                  <span className="flex items-center gap-3">
-                    <RefreshCcw className="h-5 w-5 animate-spin" />
-                    Analyzing Symptoms...
-                  </span>
+                  <>
+                    <RefreshCcw className="mr-3 h-6 w-6 animate-spin" />
+                    Running Triage Rules...
+                  </>
                 ) : (
-                  <span className="flex items-center gap-3">
-                    <Send className="h-5 w-5" />
-                    Analyze Now
-                  </span>
+                  <>
+                    <Send className="mr-3 h-6 w-6" />
+                    Analyze Symptoms
+                  </>
                 )}
               </Button>
             </CardFooter>
           </Card>
         ) : (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <Card className="border-border overflow-hidden">
-              <div className={cn(
-                "h-2 w-full",
-                result.severity === 'emergency' ? "bg-destructive" : 
-                result.severity === 'hospital' ? "bg-accent" : 
-                result.severity === 'clinic visit' ? "bg-primary" : "bg-green-500"
-              )} />
-              <CardHeader className="flex flex-row items-start justify-between">
-                <div className="space-y-1">
-                  <CardTitle className="text-3xl font-headline">Assessment Results</CardTitle>
-                  <CardDescription>Based on your reported symptoms</CardDescription>
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-500">
+            <Card className={cn("border-2 shadow-2xl overflow-hidden", getSeverityStyles(result.severity))}>
+              <CardHeader className="flex flex-row items-center justify-between pb-8">
+                <div className="space-y-2">
+                  <h2 className="text-sm font-bold uppercase tracking-widest opacity-80">Triage Result</h2>
+                  <CardTitle className="text-4xl font-headline font-black">{result.label}</CardTitle>
                 </div>
-                <div className="bg-muted p-3 rounded-2xl">
+                <div className="bg-background/20 p-4 rounded-3xl backdrop-blur-sm">
                   {getSeverityIcon(result.severity)}
                 </div>
               </CardHeader>
-              <CardContent className="p-8 space-y-8">
+              <CardContent className="space-y-8 bg-card text-foreground p-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-4">
-                    <h4 className="font-headline font-semibold text-xl flex items-center gap-2">
+                    <h3 className="text-xl font-headline font-bold flex items-center gap-2">
                       <AlertTriangle className="h-6 w-6 text-primary" />
-                      Perceived Severity
-                    </h4>
-                    <div className="p-4 rounded-xl bg-muted border border-border">
-                      <span className="text-2xl font-bold uppercase tracking-wider text-foreground">
-                        {result.severity}
-                      </span>
-                    </div>
+                      Why this status?
+                    </h3>
+                    <p className="text-lg leading-relaxed text-muted-foreground">
+                      {result.reason}
+                    </p>
                   </div>
                   <div className="space-y-4">
-                    <h4 className="font-headline font-semibold text-xl">What you should do:</h4>
-                    <p className="text-lg text-muted-foreground leading-relaxed">
+                    <h3 className="text-xl font-headline font-bold flex items-center gap-2">
+                      <ArrowRight className="h-6 w-6 text-primary" />
+                      Recommended Action
+                    </h3>
+                    <p className="text-xl font-medium leading-relaxed">
                       {result.nextSteps}
                     </p>
                   </div>
                 </div>
 
-                <div className="p-6 bg-destructive/10 border border-destructive/20 rounded-xl space-y-2">
-                  <p className="text-sm font-semibold text-accent flex items-center gap-2">
-                    <ShieldAlert className="h-5 w-5" />
-                    Medical Disclaimer
-                  </p>
-                  <p className="text-sm text-muted-foreground italic">
-                    {result.disclaimer}
-                  </p>
+                <div className="pt-8 border-t border-border">
+                  <div className="p-6 bg-muted/50 rounded-2xl border border-border">
+                    <h4 className="text-sm font-bold uppercase tracking-tighter text-accent mb-2 flex items-center gap-2">
+                      <ShieldAlert className="h-4 w-4" /> Safety Disclaimer
+                    </h4>
+                    <p className="text-sm text-muted-foreground leading-relaxed italic">
+                      {result.disclaimer}
+                    </p>
+                  </div>
                 </div>
               </CardContent>
-              <CardFooter className="bg-muted p-6 flex flex-col md:flex-row gap-4 items-center justify-between border-t border-border">
-                <Button variant="outline" onClick={resetTriage} className="w-full md:w-auto">
-                  <RefreshCcw className="mr-2 h-4 w-4" /> Start New Assessment
-                </Button>
-                <div className="flex gap-4 w-full md:w-auto">
-                  <Button asChild variant="secondary" className="flex-1 md:flex-none">
-                    <Link href="/history">Save to History</Link>
+              <CardFooter className="bg-muted/30 p-8 flex flex-col md:flex-row gap-4">
+                <div className="flex flex-col sm:flex-row gap-4 w-full justify-between items-center">
+                  <Button variant="outline" size="lg" onClick={resetTriage} className="w-full sm:w-auto font-bold h-14">
+                    <RefreshCcw className="mr-2 h-5 w-5" /> Start New Assessment
                   </Button>
-                  <Button asChild className="bg-primary text-primary-foreground flex-1 md:flex-none">
-                    <Link href="/facilities">Find Nearest Help</Link>
-                  </Button>
+                  
+                  <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                    <Button variant="secondary" size="lg" onClick={saveToHistory} className="h-14 font-bold flex-1 sm:flex-none">
+                      <History className="mr-2 h-5 w-5" /> Save to History
+                    </Button>
+                    
+                    {(result.severity === 'RED' || result.severity === 'YELLOW') && (
+                      <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground h-14 font-bold flex-1 sm:flex-none">
+                        <Link href="/facilities">
+                          <MapPin className="mr-2 h-5 w-5" /> Find Hospitals
+                        </Link>
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardFooter>
             </Card>
+            
+            {result.severity === 'RED' && (
+              <div className="p-6 bg-destructive text-destructive-foreground rounded-2xl flex items-center justify-between shadow-xl">
+                <div className="flex items-center gap-4">
+                  <AlertTriangle className="h-10 w-10 animate-pulse" />
+                  <div>
+                    <h3 className="text-xl font-bold">Immediate Action Required</h3>
+                    <p className="opacity-90">Call emergency services if help is not nearby.</p>
+                  </div>
+                </div>
+                <Button variant="secondary" size="lg" className="font-black text-destructive">
+                  CALL 108
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
