@@ -1,7 +1,6 @@
-
 'use client';
 
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -60,12 +59,77 @@ export default function ConsultationModePage() {
   const { data: triageRecords, isLoading: isTriageLoading } = useCollection(triageQuery);
   const { data: summaryRecords, isLoading: isSummaryLoading } = useCollection(summaryQuery);
 
-  const latestSummary = summaryRecords?.[0];
+  const latestSavedSummary = summaryRecords?.[0];
+
+  // Logic to determine which summary text to display
+  const displaySummary = useMemo(() => {
+    if (latestSavedSummary?.summaryText) {
+      console.log("Consultation Mode: Using latest saved AI summary");
+      return latestSavedSummary.summaryText;
+    }
+
+    if (profile) {
+      console.log("Consultation Mode: Health records found, generating auto-summary");
+      // Check if there is meaningful data to summarize
+      const hasHealthData = profile.existingDiseases || profile.allergies || profile.medications || profile.bloodGroup;
+      
+      if (hasHealthData) {
+        return `CLINICAL SUMMARY (Auto-generated from records)
+Patient: ${profile.name || 'Not provided'}, ${profile.age || 'N/A'}-year-old ${profile.gender || 'N/A'}
+Blood Group: ${profile.bloodGroup || 'Not provided'}
+ABHA ID: ${profile.abhaId || 'Not provided'}
+
+KNOWN CONDITIONS:
+${profile.existingDiseases || 'None reported'}
+
+KNOWN ALLERGIES:
+${profile.allergies || 'No known allergies'}
+
+ACTIVE MEDICATIONS:
+${profile.medications || 'None reported'}
+
+SURGICAL/HOSPITALIZATION HISTORY:
+${profile.pastSurgeries || 'None reported'}
+
+VACCINATION HISTORY:
+${profile.vaccinationNotes || 'Not provided'}
+
+RISK NOTES:
+This summary is automatically compiled from the patient's secure clinical profile. 
+It is intended for clinical review and is not a medical diagnosis.`;
+      }
+    }
+
+    return null;
+  }, [latestSavedSummary, profile]);
+
+  useEffect(() => {
+    if (profile) {
+      console.log("Consultation Mode loaded health records");
+    }
+    if (displaySummary) {
+      console.log("Clinical summary ready for display");
+    }
+  }, [profile, displaySummary]);
 
   const handleCopy = () => {
-    if (latestSummary?.summaryText) {
-      navigator.clipboard.writeText(latestSummary.summaryText);
-      toast({ title: "Copied", description: "Clinical summary copied for sharing." });
+    if (displaySummary) {
+      navigator.clipboard.writeText(displaySummary);
+      toast({ title: "Clinical Summary Copied", description: "The structured summary is ready for sharing." });
+    }
+  };
+
+  const handleShare = () => {
+    if (navigator.share && displaySummary) {
+      navigator.share({ 
+        title: `Clinical Data - ${profile?.name}`, 
+        text: displaySummary 
+      }).catch(err => {
+        console.error("Share failed", err);
+        handleCopy();
+      });
+    } else {
+      handleCopy();
     }
   };
 
@@ -94,16 +158,10 @@ export default function ConsultationModePage() {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" className="gap-2 bg-background" onClick={handleCopy}>
+            <Button variant="outline" className="gap-2 bg-background" onClick={handleCopy} disabled={!displaySummary}>
               <Copy className="h-4 w-4" /> Copy Summary
             </Button>
-            <Button className="gap-2 bg-primary text-primary-foreground font-bold" onClick={() => {
-              if (navigator.share) {
-                navigator.share({ title: `Consultation Data - ${profile?.name}`, text: latestSummary?.summaryText });
-              } else {
-                handleCopy();
-              }
-            }}>
+            <Button className="gap-2 bg-primary text-primary-foreground font-bold" onClick={handleShare} disabled={!displaySummary}>
               <Share2 className="h-4 w-4" /> Share with Doctor
             </Button>
           </div>
@@ -118,23 +176,23 @@ export default function ConsultationModePage() {
                   <FileText className="h-5 w-5 text-primary" />
                   <CardTitle className="text-lg">Structured Clinical Summary</CardTitle>
                 </div>
-                {latestSummary && (
+                {latestSavedSummary && (
                   <time className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">
-                    Generated: {new Date(latestSummary.createdAt?.toDate?.() || latestSummary.createdAt).toLocaleDateString()}
+                    AI Generated: {new Date(latestSavedSummary.createdAt?.toDate?.() || latestSavedSummary.createdAt).toLocaleDateString()}
                   </time>
                 )}
               </CardHeader>
               <CardContent className="p-6">
-                {latestSummary ? (
+                {displaySummary ? (
                   <div className="prose prose-invert max-w-none">
                     <div className="whitespace-pre-wrap font-mono text-sm leading-relaxed bg-muted/50 p-6 rounded-xl border border-border">
-                      {latestSummary.summaryText}
+                      {displaySummary}
                     </div>
                   </div>
                 ) : (
                   <div className="text-center py-12 space-y-4">
                     <ClipboardList className="h-12 w-12 text-muted-foreground/30 mx-auto" />
-                    <p className="text-muted-foreground">No recent clinical summary found.</p>
+                    <p className="text-muted-foreground">No health records or summaries found.</p>
                     <Button variant="secondary" asChild><a href="/records">Prepare Records</a></Button>
                   </div>
                 )}
