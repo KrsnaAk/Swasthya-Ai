@@ -290,15 +290,15 @@ export default function RecordsPage() {
               </CardHeader>
               <CardContent className="text-sm space-y-4 text-muted-foreground">
                 <p>
-                  Your health records are encrypted and stored securely. This data is only used during AI Triage to provide more accurate assessments.
+                  Your health records are stored securely on Google Cloud infrastructure. This data is used for clinical review by professionals and to assist AI Triage assessments.
                 </p>
                 <div className="flex items-center gap-2 text-foreground font-medium">
                   <CheckCircle2 className="h-4 w-4 text-green-500" />
-                  HIPAA Compliant Storage
+                  Secure Cloud Storage
                 </div>
                 <div className="flex items-center gap-2 text-foreground font-medium">
                   <CheckCircle2 className="h-4 w-4 text-green-500" />
-                  End-to-End Encryption
+                  Encrypted Data Transfer
                 </div>
               </CardContent>
             </Card>

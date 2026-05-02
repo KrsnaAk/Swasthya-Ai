@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -26,13 +25,13 @@ export function LandingTrust() {
                   <div className="mt-1 bg-green-500/10 p-1 rounded-full">
                     <Lock className="h-5 w-5 text-green-500" />
                   </div>
-                  <p className="text-muted-foreground"><strong>End-to-End Encryption</strong> — Your health data is encrypted and completely private.</p>
+                  <p className="text-muted-foreground"><strong>Secure Data Encryption</strong> — Your health data is encrypted at rest and in transit using industry-standard protocols.</p>
                 </li>
                 <li className="flex items-start gap-4">
                   <div className="mt-1 bg-green-500/10 p-1 rounded-full">
                     <UserCheck className="h-5 w-5 text-green-500" />
                   </div>
-                  <p className="text-muted-foreground"><strong>User Consent</strong> — You control your data. We use verified clinical RAG models.</p>
+                  <p className="text-muted-foreground"><strong>User Consent</strong> — You control your data. It is shared only with verified clinical professionals.</p>
                 </li>
                 <li className="flex items-start gap-4">
                   <div className="mt-1 bg-green-500/10 p-1 rounded-full">
@@ -45,11 +44,11 @@ export function LandingTrust() {
 
             <div className="lg:col-span-5 bg-primary/5 p-12 flex flex-col justify-center gap-6 border-l border-white/5">
               <div className="space-y-2">
-                <h4 className="font-bold text-white text-lg">Certifications & Compliance</h4>
+                <h4 className="font-bold text-white text-lg">Infrastructure Security</h4>
                 <div className="flex flex-wrap gap-2 pt-2">
                   <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-xs font-bold text-primary">SECURE</span>
-                  <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-xs font-bold text-primary">TRUSTED AI</span>
-                  <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-xs font-bold text-primary">PRIVACY FIRST</span>
+                  <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-xs font-bold text-primary">TRUSTED CLOUD</span>
+                  <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-xs font-bold text-primary">PRIVACY FOCUS</span>
                 </div>
               </div>
               
