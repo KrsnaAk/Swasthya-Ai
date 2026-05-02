@@ -91,7 +91,7 @@ export default function DoctorDashboard() {
                  <CardTitle className="flex items-center gap-2">
                     <Search className="h-5 w-5 text-primary" />
                     Clinical Patient Search
-                 </Search>
+                 </CardTitle>
                  <CardDescription>Search by exact Patient ID (ABHA) or registered full name.</CardDescription>
                </CardHeader>
                <CardContent>
