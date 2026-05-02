@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { AppShell } from '@/components/layout/app-shell';
-import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase, useUser, useDoc } from '@/firebase';
 import { collection, query, orderBy, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
@@ -24,7 +24,8 @@ import {
   ClipboardCheck,
   Briefcase,
   AlertTriangle,
-  LogOut
+  LogOut,
+  Lock
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -32,18 +33,20 @@ import { useRouter } from 'next/navigation';
 
 export default function AdminPage() {
   const db = useFirestore();
-  const { user: adminUser } = useUser();
+  const { user } = useUser();
   const { toast } = useToast();
   const router = useRouter();
+  
   const [selectedDoctor, setSelectedDoctor] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
-  const [isDemoMode, setIsDemoMode] = useState(false);
 
-  useEffect(() => {
-    const isDemo = localStorage.getItem("demoAdminAccess") === "true";
-    setIsDemoMode(isDemo);
-  }, []);
+  const userDocRef = useMemoFirebase(() => {
+    if (!db || !user?.uid) return null;
+    return doc(db, 'users', user.uid);
+  }, [db, user?.uid]);
+
+  const { data: profile, isLoading: isProfileLoading } = useDoc(userDocRef);
 
   const applicationsQuery = useMemoFirebase(() => {
     if (!db) return null;
@@ -51,13 +54,6 @@ export default function AdminPage() {
   }, [db]);
 
   const { data: applications, isLoading } = useCollection(applicationsQuery);
-
-  const handleDemoLogout = () => {
-    localStorage.removeItem("demoAdminAccess");
-    localStorage.removeItem("demoAdminEmail");
-    toast({ title: "Demo Mode Terminated", description: "Returning to terminal..." });
-    router.push('/admin-auth');
-  };
 
   const handleReview = async (status: 'verified' | 'rejected') => {
     if (!selectedDoctor || !db) return;
@@ -67,7 +63,7 @@ export default function AdminPage() {
       const updateData = {
         verificationStatus: status,
         reviewedAt: serverTimestamp(),
-        reviewedBy: adminUser?.uid || 'demo-admin',
+        reviewedBy: user?.uid,
         rejectionReason: status === 'rejected' ? rejectionReason : null
       };
 
@@ -89,7 +85,7 @@ export default function AdminPage() {
     }
   };
 
-  if (isLoading && !isDemoMode) {
+  if (isProfileLoading || isLoading) {
     return (
       <AppShell>
         <div className="flex h-[60vh] w-full items-center justify-center">
@@ -99,32 +95,27 @@ export default function AdminPage() {
     );
   }
 
+  // Double-check real admin status
+  if (profile?.role !== 'admin') {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-8">
+        <div className="max-w-md w-full text-center space-y-6">
+          <div className="bg-destructive/10 p-8 rounded-full w-fit mx-auto shadow-2xl">
+            <Lock className="h-16 w-16 text-destructive" />
+          </div>
+          <h1 className="text-3xl font-headline font-bold">Access Restricted</h1>
+          <p className="text-muted-foreground leading-relaxed">
+            You must have administrator privileges to access this area.
+          </p>
+          <Button onClick={() => router.push('/')} className="rounded-xl px-8 bg-primary">Back to Safety</Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <AppShell>
       <div className="max-w-6xl mx-auto space-y-8">
-        {isDemoMode && (
-          <div className="bg-amber-500/10 border-2 border-amber-500/20 p-6 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl animate-in fade-in slide-in-from-top-4 duration-500">
-             <div className="flex items-center gap-4">
-                <div className="bg-amber-500 p-3 rounded-2xl text-black animate-pulse">
-                   <AlertTriangle className="h-6 w-6" />
-                </div>
-                <div>
-                   <h3 className="text-amber-500 font-black uppercase tracking-widest text-sm">Demo Administration Active</h3>
-                   <p className="text-xs text-muted-foreground leading-relaxed mt-1">
-                     You are accessing clinical controls via the demo bypass. Replace with Firebase RBAC before production deployment.
-                   </p>
-                </div>
-             </div>
-             <Button 
-               variant="outline" 
-               className="border-amber-500/30 text-amber-500 hover:bg-amber-500/10 h-12 font-bold px-8 rounded-xl"
-               onClick={handleDemoLogout}
-             >
-                <LogOut className="h-4 w-4 mr-2" /> EXIT DEMO TERMINAL
-             </Button>
-          </div>
-        )}
-
         <div className="flex justify-between items-center">
            <div>
               <h1 className="text-3xl font-headline font-bold">Admin Portal</h1>
