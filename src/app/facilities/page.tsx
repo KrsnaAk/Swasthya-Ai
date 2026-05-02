@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,24 +23,42 @@ import {
   Siren,
   ShieldAlert
 } from "lucide-react";
-import Image from "next/image";
-import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Badge } from "@/components/ui/badge";
 import { getNearbyHospitals, getGoogleMapsUrl, type Hospital, type FacilityType } from "@/lib/hospital-service";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+
+// Dynamically import the map component to avoid SSR issues with Leaflet
+const FacilityMap = dynamic(() => import("./FacilityMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full rounded-3xl bg-muted/20 flex flex-col items-center justify-center gap-4 border border-white/5 shadow-2xl">
+      <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Initializing Live Network...</p>
+    </div>
+  ),
+});
+
+const CITY_COORDINATES: Record<string, { lat: number, lng: number }> = {
+  "bhopal": { lat: 23.2599, lng: 77.4126 },
+  "indore": { lat: 22.7196, lng: 75.8577 },
+  "gwalior": { lat: 26.2183, lng: 78.1828 },
+  "raipur": { lat: 21.2514, lng: 81.6296 },
+  "mumbai": { lat: 19.0760, lng: 72.8777 },
+  "delhi": { lat: 28.6139, lng: 77.2090 },
+  "default": { lat: 23.2599, lng: 77.4126 } // Default to Bhopal for demo
+};
 
 function FacilitiesContent() {
   const searchParams = useSearchParams();
   const initialFilter = searchParams.get('type') || 'all';
   
-  const mapImage = PlaceHolderImages.find(img => img.id === 'hospital-map');
   const [searchQuery, setSearchQuery] = useState("");
   const [mode, setMode] = useState<"sos" | "search">("search");
   const [activeFilter, setActiveFilter] = useState(initialFilter);
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [loading, setLoading] = useState(true);
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [mapCenter, setMapCenter] = useState<{lat: number, lng: number}>(CITY_COORDINATES.default);
   const [locationStatus, setLocationStatus] = useState<"idle" | "requesting" | "denied" | "ready">("idle");
 
   useEffect(() => {
@@ -53,8 +72,17 @@ function FacilitiesContent() {
   const loadHospitals = async (query?: string) => {
     setLoading(true);
     try {
-      const data = await getNearbyHospitals(query || searchQuery, activeFilter);
+      const q = query || searchQuery;
+      const data = await getNearbyHospitals(q, activeFilter);
       setHospitals(data);
+
+      // Center map on searched city if applicable
+      if (q) {
+        const cityKey = q.toLowerCase();
+        if (CITY_COORDINATES[cityKey]) {
+          setMapCenter(CITY_COORDINATES[cityKey]);
+        }
+      }
     } catch (e) {
       console.error("Failed to load facilities", e);
     } finally {
@@ -67,10 +95,12 @@ function FacilitiesContent() {
     if (typeof window !== "undefined" && "geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          setUserLocation(loc);
+          setMapCenter(loc);
           setLocationStatus("ready");
           setActiveFilter("emergency");
-          loadHospitals(); // In real app, this would use lat/lng
+          loadHospitals(); 
         },
         () => {
           setLocationStatus("denied");
@@ -183,7 +213,7 @@ function FacilitiesContent() {
             </div>
           ) : hospitals.length > 0 ? (
             hospitals.map((h) => (
-              <Card key={h.id} className="cursor-pointer hover:border-primary/50 transition-all group overflow-hidden border-white/5 bg-card/40 backdrop-blur-sm">
+              <Card key={h.id} className="cursor-pointer hover:border-primary/50 transition-all group overflow-hidden border-white/5 bg-card/40 backdrop-blur-sm" onClick={() => setMapCenter(h.coordinates)}>
                 <CardHeader className="p-4 pb-2">
                   <div className="flex justify-between items-start">
                     <Badge variant={getBadgeVariant(h.type)} className="mb-2 text-[9px] uppercase tracking-[0.2em] font-black">
@@ -236,83 +266,31 @@ function FacilitiesContent() {
 
       {/* Map View */}
       <div className="lg:col-span-8 min-h-[400px] h-full relative">
-        <Card className="h-full border-white/5 bg-muted/20 overflow-hidden relative shadow-2xl rounded-3xl">
-          {mapImage && (
-            <div className="absolute inset-0 grayscale contrast-125 opacity-40">
-              <Image 
-                src={mapImage.imageUrl} 
-                alt={mapImage.description} 
-                fill 
-                className="object-cover"
-                data-ai-hint={mapImage.imageHint}
-              />
+        <FacilityMap 
+          facilities={hospitals} 
+          center={mapCenter} 
+          userLocation={userLocation} 
+        />
+        
+        {/* Info Panel Overlay */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-full max-w-lg px-6 z-[400] pointer-events-none">
+          <div className="bg-card/40 backdrop-blur-3xl p-6 rounded-[2rem] shadow-2xl border border-white/10 flex items-center gap-6 animate-in slide-in-from-bottom-8 duration-700 pointer-events-auto">
+            <div className="h-16 w-16 rounded-[1.25rem] bg-primary/20 flex items-center justify-center text-primary shrink-0 heartbeat">
+              <Activity className="h-8 w-8" />
             </div>
-          )}
-          
-          {/* Simulated Map Markers */}
-          <div className="absolute inset-0 p-8 pointer-events-none">
-            {hospitals.slice(0, 4).map((h, i) => (
-              <div 
-                key={h.id}
-                className="absolute animate-in zoom-in duration-500"
-                style={{ 
-                  top: `${20 + (i * 15)}%`, 
-                  left: `${15 + (i * 20)}%` 
-                }}
-              >
-                <div className="relative group pointer-events-auto cursor-pointer">
-                  <div className={cn(
-                    "h-10 w-10 rounded-full flex items-center justify-center shadow-2xl border-2 border-white",
-                    h.isEmergencyReady ? "bg-destructive" : "bg-primary"
-                  )}>
-                    <Building2 className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap bg-card/90 backdrop-blur-md px-2 py-0.5 rounded text-[10px] font-bold border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {h.name}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent pointer-events-none" />
-          
-          <div className="absolute top-6 right-6 flex flex-col gap-3">
-            <Button variant="secondary" size="icon" className="rounded-2xl shadow-2xl bg-card/60 backdrop-blur-xl border border-white/10 h-12 w-12 hover:scale-110 transition-transform">
-              <Navigation className="h-6 w-6 text-primary" />
-            </Button>
-            <div className="bg-card/60 backdrop-blur-xl border border-white/10 rounded-2xl p-2 flex flex-col gap-2">
-              <div className="h-3 w-3 rounded-full bg-primary" />
-              <div className="h-3 w-3 rounded-full bg-destructive" />
+            <div className="space-y-1">
+              <p className="text-base font-black uppercase tracking-widest medical-gradient-text">Clinical Network Status</p>
+              <p className="text-[11px] text-muted-foreground leading-relaxed font-medium">
+                {locationStatus === 'ready' 
+                  ? "Proximity detection active. Nearest high-priority trauma centers are pinned for immediate routing."
+                  : "Search or enable location to discover the regional clinical capacity and availability."}
+              </p>
+              {locationStatus === 'denied' && (
+                <p className="text-[9px] text-destructive font-bold uppercase tracking-tighter mt-1">Permission denied. Map reset to regional view.</p>
+              )}
             </div>
           </div>
-
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-full max-w-lg px-6">
-            <div className="bg-card/40 backdrop-blur-3xl p-6 rounded-[2rem] shadow-2xl border border-white/10 flex items-center gap-6 animate-in slide-in-from-bottom-8 duration-700">
-              <div className="h-16 w-16 rounded-[1.25rem] bg-primary/20 flex items-center justify-center text-primary shrink-0 heartbeat">
-                <Activity className="h-8 w-8" />
-              </div>
-              <div className="space-y-1">
-                <p className="text-base font-black uppercase tracking-widest medical-gradient-text">Live Clinical Network</p>
-                <p className="text-[11px] text-muted-foreground leading-relaxed font-medium">
-                  {locationStatus === 'ready' 
-                    ? "Your location is active. High-priority trauma centers have been highlighted for immediate intervention."
-                    : "Enter a city to explore local facility capacity and clinical triage status."}
-                </p>
-                {locationStatus === 'denied' && (
-                  <p className="text-[9px] text-destructive font-bold uppercase tracking-tighter mt-1">Location permission denied. Using manual search.</p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Demo Badge */}
-          <div className="absolute top-6 left-6">
-            <Badge variant="outline" className="bg-background/40 backdrop-blur-md border-white/10 text-[9px] uppercase tracking-widest font-black py-1 px-3 rounded-full">
-              Demo Data Interface
-            </Badge>
-          </div>
-        </Card>
+        </div>
       </div>
     </div>
   );
@@ -329,7 +307,7 @@ export default function FacilitiesPage() {
         <div className="h-full space-y-6">
           <div className="flex flex-col gap-1">
             <h1 className="text-3xl font-headline font-black text-foreground">Facility Finder</h1>
-            <p className="text-sm text-muted-foreground font-medium">Navigate to high-priority emergency centers or search for local clinics.</p>
+            <p className="text-sm text-muted-foreground font-medium">Coordinate care across our interactive live healthcare network.</p>
           </div>
           <FacilitiesContent />
         </div>
