@@ -17,7 +17,8 @@ import {
   Microscope,
   ShieldCheck,
   ChevronRight,
-  Info
+  Info,
+  DatabaseZap
 } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, collection, serverTimestamp, setDoc } from 'firebase/firestore';
@@ -38,6 +39,7 @@ export default function ImagingPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<ImagingAnalysisReport | null>(null);
+  const [saveError, setSaveError] = useState<boolean>(false);
   
   const [metadata, setMetadata] = useState({
     age: 30,
@@ -87,50 +89,72 @@ export default function ImagingPage() {
   };
 
   const handleAnalyze = async () => {
-    if (!selectedFile || !user) return;
+    if (!selectedFile || !user) {
+      if (!user) toast({ title: "Auth Required", description: "Please sign in to analyze scans.", variant: "destructive" });
+      return;
+    }
 
     setLoading(true);
+    setSaveError(false);
+    
+    let aiResult: ImagingAnalysisOutput;
+    let base64: string;
+
+    // STEP 1: AI Analysis (Independent of Firebase Save)
     try {
-      const base64 = await fileToBase64(selectedFile);
-      const aiResult = await analyzeMedicalImage({
+      base64 = await fileToBase64(selectedFile);
+      aiResult = await analyzeMedicalImage({
         imageDataUri: base64,
         age: metadata.age,
         gender: metadata.gender,
         symptoms: metadata.symptoms,
         imageTypeHint: metadata.imageTypeHint
       });
+    } catch (e: any) {
+      console.error("AI Analysis failed", e);
+      setLoading(false);
+      toast({ 
+        title: "Analysis Failed", 
+        description: "The AI could not process this image. Please ensure it is a valid medical scan.", 
+        variant: "destructive" 
+      });
+      return;
+    }
 
-      const reportId = `IMG-${Date.now()}`;
-      const newReport: ImagingAnalysisReport = {
-        id: reportId,
-        userId: user.uid,
-        patientMetadata: metadata,
-        imageUrl: base64, // Storing base64 for demo purposes; ideally upload to Firebase Storage
-        aiOutput: aiResult,
-        reviewStatus: 'pending',
-        createdAt: new Date(),
-      };
+    // STEP 2: Create local report object
+    const reportId = `IMG-${Date.now()}`;
+    const newReport: ImagingAnalysisReport = {
+      id: reportId,
+      userId: user.uid,
+      patientMetadata: metadata,
+      imageUrl: base64,
+      aiOutput: aiResult,
+      reviewStatus: 'pending',
+      createdAt: new Date(),
+    };
 
-      // Save to Firestore
-      if (db) {
+    // STEP 3: Show result immediately
+    setReport(newReport);
+    setLoading(false);
+    toast({ title: "Analysis Complete", description: "The agent has generated a clinical draft report." });
+
+    // STEP 4: Attempt Firebase Sync (Separately)
+    try {
+      if (db && user) {
         const reportRef = doc(db, 'medical_imaging_reports', reportId);
         await setDoc(reportRef, {
            ...newReport,
            createdAt: serverTimestamp()
         });
       }
-
-      setReport(newReport);
-      toast({ title: "Analysis Complete", description: "Your imaging report has been generated." });
-    } catch (e: any) {
-      console.error("Analysis failed", e);
+    } catch (fireError: any) {
+      console.error("Firebase save failed", fireError);
+      setSaveError(true);
       toast({ 
-        title: "Analysis Failed", 
-        description: "The AI could not process this image. Please ensure it is a valid medical scan.", 
+        title: "Cloud Sync Warning", 
+        description: "Analysis is visible, but could not be saved to your profile due to permissions.", 
         variant: "destructive" 
       });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -138,6 +162,7 @@ export default function ImagingPage() {
     setSelectedFile(null);
     setPreviewUrl(null);
     setReport(null);
+    setSaveError(false);
     setMetadata(prev => ({ ...prev, symptoms: '', imageTypeHint: '' }));
   };
 
@@ -176,7 +201,7 @@ export default function ImagingPage() {
                   >
                     {previewUrl ? (
                       <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-xl border border-white/10">
-                        <Image src={previewUrl} alt="Preview" fill className="object-contain" />
+                        <Image src={previewUrl} alt="Preview" fill className="object-contain" unoptimized />
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                           <p className="text-white font-bold flex items-center gap-2"><Upload className="h-5 w-5" /> Change Image</p>
                         </div>
@@ -273,6 +298,20 @@ export default function ImagingPage() {
           </div>
         ) : (
           <div className="space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
+             {saveError && (
+               <div className="bg-destructive/10 border-2 border-destructive/20 p-6 rounded-3xl flex items-center justify-between gap-6 shadow-xl">
+                 <div className="flex items-center gap-4">
+                   <div className="bg-destructive/20 p-3 rounded-2xl">
+                     <DatabaseZap className="h-6 w-6 text-destructive" />
+                   </div>
+                   <div>
+                     <h3 className="font-bold text-destructive">Clinical Record Not Synced</h3>
+                     <p className="text-xs text-muted-foreground">Analysis is temporary. Please contact administrator or check database permissions to save this report permanently.</p>
+                   </div>
+                 </div>
+               </div>
+             )}
+
              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                {/* Report View */}
                <div className="lg:col-span-8 space-y-8">
@@ -310,7 +349,7 @@ export default function ImagingPage() {
                         <CardTitle className="text-sm font-bold uppercase tracking-widest">Original Scan</CardTitle>
                      </CardHeader>
                      <CardContent className="p-0 aspect-square relative">
-                        <Image src={report.imageUrl} alt="Scan" fill className="object-contain p-4" />
+                        <Image src={report.imageUrl} alt="Scan" fill className="object-contain p-4" unoptimized />
                      </CardContent>
                   </Card>
                </div>

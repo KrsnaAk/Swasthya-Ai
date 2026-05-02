@@ -47,8 +47,11 @@ service cloud.firestore {
     }
 
     match /medical_imaging_reports/{reportId} {
-      allow get, list: if isSignedIn() && (resource.data.userId == request.auth.uid || request.auth.uid != null);
+      // Allow user to read and create their own reports
+      allow get, list: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      
+      // Allow doctor review workflow (based on mock isDoctor flag or owner access)
       allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || request.resource.data.isDoctor == true);
     }
 
