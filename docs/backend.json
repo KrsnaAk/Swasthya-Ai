@@ -96,102 +96,22 @@
         "updatedAt"
       ]
     },
-    "TriageAssessment": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "TriageAssessment",
+    "ChatTriageRecord": {
       "type": "object",
-      "description": "Records a single AI-powered symptom triage assessment performed by a user.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the TriageAssessment entity."
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to the UserProfile who performed this assessment."
-        },
-        "symptomsInput": {
-          "type": "string",
-          "description": "The raw text input of symptoms provided by the user."
-        },
-        "assessmentResult": {
-          "type": "string",
-          "description": "The AI's suggested severity and next steps."
-        },
-        "suggestedNextSteps": {
-          "type": "string",
-          "description": "Detailed natural language recommendations provided by the AI."
-        },
-        "assessmentDate": {
-          "type": "string",
-          "description": "Timestamp when the triage assessment was performed.",
-          "format": "date-time"
-        },
-        "aiSummary": {
-          "type": "string",
-          "description": "Brief AI summary of the triage."
-        },
-        "rawAiResponse": {
-          "type": "string",
-          "description": "Optional raw JSON or text response from the AI model."
-        }
-      },
-      "required": [
-        "id",
-        "userId",
-        "symptomsInput",
-        "assessmentResult",
-        "suggestedNextSteps",
-        "assessmentDate"
-      ]
-    },
-    "DoctorSummary": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "DoctorSummary",
-      "type": "object",
-      "description": "Professional medical summary generated for consultation.",
       "properties": {
         "id": { "type": "string" },
         "userId": { "type": "string" },
-        "summaryText": { "type": "string" },
-        "triageRef": { "type": "string", "description": "Optional reference to a specific triage ID." },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "symptoms": { "type": "string" },
+        "duration": { "type": "string" },
+        "painScore": { "type": "number" },
+        "redFlags": { "type": "array", "items": { "type": "string" } },
+        "severity": { "type": "string" },
+        "explanation": { "type": "string" },
+        "recommendation": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "source": { "type": "string", "const": "chatbot" }
       },
-      "required": ["id", "userId", "summaryText", "createdAt"]
-    },
-    "SOSAlert": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "SOSAlert",
-      "type": "object",
-      "description": "Represents an active emergency alert triggered by a user.",
-      "properties": {
-        "id": { "type": "string" },
-        "userId": { "type": "string" },
-        "userName": { "type": "string" },
-        "locationLat": { "type": "number" },
-        "locationLng": { "type": "number" },
-        "status": { "type": "string", "enum": ["active", "resolved"] },
-        "emergencyContact": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "userId", "userName", "status", "createdAt"]
-    },
-    "PreventiveHealthAssessment": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "PreventiveHealthAssessment",
-      "type": "object",
-      "description": "Stores user lifestyle analytics and risk scores.",
-      "properties": {
-        "id": { "type": "string" },
-        "userId": { "type": "string" },
-        "bmi": { "type": "number" },
-        "wellnessScore": { "type": "number" },
-        "diabetesRisk": { "type": "string", "enum": ["Low", "Moderate", "High"] },
-        "cardiacRisk": { "type": "string", "enum": ["Low", "Moderate", "High"] },
-        "assessmentDate": { "type": "string", "format": "date-time" },
-        "inputData": { "type": "object" }
-      },
-      "required": ["id", "userId", "bmi", "wellnessScore", "diabetesRisk", "cardiacRisk", "assessmentDate"]
+      "required": ["id", "userId", "severity", "createdAt"]
     }
   },
   "auth": {
@@ -208,48 +128,16 @@
           "entityName": "UserProfile",
           "schema": {
             "$ref": "#/backend/entities/UserProfile"
-          },
-          "description": "Stores individual user profiles."
+          }
         }
       },
       {
-        "path": "/users/{userId}/triageAssessments/{triageId}",
+        "path": "/chat_triage_records/{recordId}",
         "definition": {
-          "entityName": "TriageAssessment",
+          "entityName": "ChatTriageRecord",
           "schema": {
-            "$ref": "#/backend/entities/TriageAssessment"
-          },
-          "description": "Stores a chronological record of AI triage assessments."
-        }
-      },
-      {
-        "path": "/users/{userId}/doctorSummaries/{summaryId}",
-        "definition": {
-          "entityName": "DoctorSummary",
-          "schema": {
-            "$ref": "#/backend/entities/DoctorSummary"
-          },
-          "description": "Stores professional summaries shared with doctors."
-        }
-      },
-      {
-        "path": "/users/{userId}/preventiveAssessments/{assessmentId}",
-        "definition": {
-          "entityName": "PreventiveHealthAssessment",
-          "schema": {
-            "$ref": "#/backend/entities/PreventiveHealthAssessment"
-          },
-          "description": "Stores preventive health history."
-        }
-      },
-      {
-        "path": "/sos_alerts/{alertId}",
-        "definition": {
-          "entityName": "SOSAlert",
-          "schema": {
-            "$ref": "#/backend/entities/SOSAlert"
-          },
-          "description": "Root collection for active emergency alerts."
+            "$ref": "#/backend/entities/ChatTriageRecord"
+          }
         }
       }
     ]

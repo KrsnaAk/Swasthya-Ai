@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useEffect } from "react";
-import Link from "next/link";
+import Link from "next/navigation"; // Not using Link here as intended, keeping existing logic
 import { usePathname, useRouter } from "next/navigation";
 import { 
   Sidebar, 
@@ -21,6 +21,8 @@ import { Button } from "@/components/ui/button";
 import { HeartPulse, LogOut, Loader2 } from "lucide-react";
 import { useAuth, useUser } from "@/firebase";
 import { signOut } from "firebase/auth";
+import { ChatbotButton } from "@/components/chatbot/ChatbotButton";
+import NextLink from "next/link";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -29,7 +31,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const auth = useAuth();
 
   useEffect(() => {
-    if (!isUserLoading && !user && pathname !== '/login' && pathname !== '/signup' && pathname !== '/forgot-password') {
+    if (!isUserLoading && !user && pathname !== '/login' && pathname !== '/signup' && pathname !== '/forgot-password' && pathname !== '/') {
       router.push('/login');
     }
   }, [user, isUserLoading, pathname, router]);
@@ -47,10 +49,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Allow public access to auth pages without shell if needed, 
-  // but usually AppShell is wrapped around protected content.
-  const isAuthPage = ['/login', '/signup', '/forgot-password'].includes(pathname);
-  if (isAuthPage) return <>{children}</>;
+  const isPublicPage = ['/login', '/signup', '/forgot-password', '/'].includes(pathname);
+  if (isPublicPage) return <>{children}</>;
 
   return (
     <SidebarProvider>
@@ -67,10 +67,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {navItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={pathname === item.href} tooltip={item.title}>
-                    <Link href={item.href} className="flex items-center gap-3 px-3 py-2 rounded-md transition-colors hover:bg-secondary">
+                    <NextLink href={item.href} className="flex items-center gap-3 px-3 py-2 rounded-md transition-colors hover:bg-secondary">
                       <item.icon className="h-5 w-5" />
                       <span className="font-medium">{item.title}</span>
-                    </Link>
+                    </NextLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -94,8 +94,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {navItems.find(item => item.href === pathname)?.title || "Welcome"}
             </h2>
           </header>
-          <main className="flex-1 overflow-y-auto p-6">
+          <main className="flex-1 overflow-y-auto p-6 relative">
             {children}
+            <ChatbotButton />
           </main>
         </SidebarInset>
       </div>
