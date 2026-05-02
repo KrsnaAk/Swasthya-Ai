@@ -17,7 +17,23 @@ export async function GET(request: Request) {
     const token = authHeader.split('Bearer ')[1];
     
     // 2. Verify Firebase ID Token
-    const decodedToken = await adminAuth.verifyIdToken(token);
+    let decodedToken;
+    try {
+      decodedToken = await adminAuth.verifyIdToken(token);
+    } catch (tokenError: any) {
+      console.error('Token Verification Failed:', tokenError.message);
+      
+      // Explicitly check for project mismatch (aud claim error)
+      if (tokenError.code === 'auth/argument-error' || tokenError.message.includes('aud')) {
+        return NextResponse.json({ 
+          success: false, 
+          error: 'Firebase Project Mismatch',
+          details: 'Backend is using a different Firebase Project than the frontend. Update FIREBASE_PROJECT_ID in .env.local.'
+        }, { status: 403 });
+      }
+      throw tokenError;
+    }
+
     const uid = decodedToken.uid;
 
     // 3. Verify Admin Role in Firestore
