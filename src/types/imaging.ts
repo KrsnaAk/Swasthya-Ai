@@ -13,14 +13,17 @@ export interface ImagingAnalysisReport {
   };
   imageUrl: string;
   aiOutput: {
-    imageType: string;
-    imageQuality: string;
-    findings: string[];
-    possibleConcerns: string[];
-    impression: string;
-    patientFriendlyExplanation: string;
-    recommendedNextSteps: string[];
-    researchContext: { title: string; link: string; snippet: string }[];
+    image_type: string;
+    image_quality: string;
+    summary: string;
+    severity: 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
+    confidence_score: number;
+    key_findings: string[];
+    possible_concerns: string[];
+    recommendations: string[];
+    urgent_flags: string[];
+    patient_explanation: string;
+    research_context: { title: string; link: string; snippet: string }[];
     uncertainty: string;
     disclaimer: string;
   };

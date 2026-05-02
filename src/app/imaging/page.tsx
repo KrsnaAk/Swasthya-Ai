@@ -100,16 +100,33 @@ export default function ImagingPage() {
     let aiResult: ImagingAnalysisOutput;
     let base64: string;
 
-    // STEP 1: AI Analysis (Independent of Firebase Save)
+    // STEP 1: AI Analysis
     try {
       base64 = await fileToBase64(selectedFile);
-      aiResult = await analyzeMedicalImage({
+      const rawAiResult = await analyzeMedicalImage({
         imageDataUri: base64,
         age: metadata.age,
         gender: metadata.gender,
         symptoms: metadata.symptoms,
         imageTypeHint: metadata.imageTypeHint
       });
+
+      // STEP 2: Normalize Output
+      aiResult = {
+        image_type: rawAiResult?.image_type || metadata.imageTypeHint || "Unknown scan",
+        image_quality: rawAiResult?.image_quality || "Unknown",
+        summary: rawAiResult?.summary || "No summary available.",
+        severity: rawAiResult?.severity || "LOW",
+        confidence_score: Number(rawAiResult?.confidence_score ?? 0),
+        key_findings: Array.isArray(rawAiResult?.key_findings) ? rawAiResult.key_findings : [],
+        possible_concerns: Array.isArray(rawAiResult?.possible_concerns) ? rawAiResult.possible_concerns : [],
+        recommendations: Array.isArray(rawAiResult?.recommendations) ? rawAiResult.recommendations : [],
+        urgent_flags: Array.isArray(rawAiResult?.urgent_flags) ? rawAiResult.urgent_flags : [],
+        patient_explanation: rawAiResult?.patient_explanation || rawAiResult?.summary || "No simplified explanation available.",
+        research_context: Array.isArray(rawAiResult?.research_context) ? rawAiResult.research_context : [],
+        uncertainty: rawAiResult?.uncertainty || "Not specified.",
+        disclaimer: rawAiResult?.disclaimer || "Assistive AI insights only. Consult a doctor."
+      };
     } catch (e: any) {
       console.error("AI Analysis failed", e);
       setLoading(false);
@@ -121,7 +138,7 @@ export default function ImagingPage() {
       return;
     }
 
-    // STEP 2: Create local report object
+    // STEP 3: Create local report object
     const reportId = `IMG-${Date.now()}`;
     const newReport: ImagingAnalysisReport = {
       id: reportId,
@@ -133,12 +150,12 @@ export default function ImagingPage() {
       createdAt: new Date(),
     };
 
-    // STEP 3: Show result immediately
+    // STEP 4: Show result immediately
     setReport(newReport);
     setLoading(false);
     toast({ title: "Analysis Complete", description: "The agent has generated a clinical draft report." });
 
-    // STEP 4: Attempt Firebase Sync (Separately)
+    // STEP 5: Attempt Firebase Sync
     try {
       if (db && user) {
         const reportRef = doc(db, 'medical_imaging_reports', reportId);

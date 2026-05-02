@@ -16,14 +16,17 @@ const ImagingAnalysisInputSchema = z.object({
 });
 
 const ImagingAnalysisOutputSchema = z.object({
-  imageType: z.string().describe("Identified type: X-ray, MRI, CT, etc."),
-  imageQuality: z.string().describe("Technical assessment of image quality."),
-  findings: z.array(z.string()).describe("Direct clinical observations from the image."),
-  possibleConcerns: z.array(z.string()).describe("Anomalies or variations requiring attention."),
-  impression: z.string().describe("Structured clinical summary of findings."),
-  patientFriendlyExplanation: z.string().describe("Empathetic, simple explanation for the patient."),
-  recommendedNextSteps: z.array(z.string()).describe("Actionable clinical or diagnostic follow-ups."),
-  researchContext: z.array(z.object({
+  image_type: z.string().describe("Identified type: X-ray, MRI, CT, etc."),
+  image_quality: z.string().describe("Technical assessment of image quality."),
+  summary: z.string().describe("Structured clinical summary of findings."),
+  severity: z.enum(['LOW', 'MODERATE', 'HIGH', 'CRITICAL']),
+  confidence_score: z.number().describe("AI confidence score from 0-100."),
+  key_findings: z.array(z.string()).describe("Direct clinical observations from the image."),
+  possible_concerns: z.array(z.string()).describe("Anomalies or variations requiring attention."),
+  recommendations: z.array(z.string()).describe("Actionable clinical or diagnostic follow-ups."),
+  urgent_flags: z.array(z.string()).describe("List of immediate red flags detected."),
+  patient_explanation: z.string().describe("Empathetic, simple explanation for the patient."),
+  research_context: z.array(z.object({
     title: z.string(),
     link: z.string(),
     snippet: z.string(),
@@ -55,7 +58,7 @@ const prompt = ai.definePrompt({
 3. OBSERVE: Detail specific visual findings (opacities, fractures, masses, alignment, etc.).
 4. SYNTHESIZE: Formulate a professional clinical impression.
 5. SIMPLIFY: Provide an empathetic explanation that a patient without medical training can understand.
-6. RESEARCH: Suggest relevant clinical context or standards (simulated as researchContext).
+6. RESEARCH: Suggest relevant clinical context or standards (simulated as research_context).
 7. SAFETY: Explicitly state what you ARE NOT seeing or where you are uncertain.
 
 ### RESTRICTIONS:
@@ -63,9 +66,10 @@ const prompt = ai.definePrompt({
 - ALWAYS state that this is a "Draft Clinical Report" for physician review.
 - NEVER suggest specific medication dosages.
 - If the image is not a medical image, clearly state that and refuse analysis.
+- You MUST return every field in the JSON schema. All list fields MUST be arrays, even if empty.
 
 ### OUTPUT:
-Return a JSON object following the specified schema. Ensure the patientFriendlyExplanation is supportive and clear.`,
+Return a JSON object following the specified schema strictly.`,
 });
 
 export async function analyzeMedicalImage(input: z.infer<typeof ImagingAnalysisInputSchema>): Promise<ImagingAnalysisOutput> {
