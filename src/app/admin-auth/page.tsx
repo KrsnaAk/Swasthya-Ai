@@ -14,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export default function AdminAuthPage() {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [password, setPassword] = useState(''); // This acts as the Security Token
   const [loading, setLoading] = useState(false);
   const auth = useAuth();
   const router = useRouter();
@@ -23,6 +23,18 @@ export default function AdminAuthPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+
+    // 1. Check for Demo Credentials
+    if (email === "prince32@gmail.com" && password === "Admin@123") {
+      localStorage.setItem("demoAdminAccess", "true");
+      localStorage.setItem("demoAdminEmail", email);
+      toast({ title: "Demo Admin Authorized", description: "Entering system in demo mode..." });
+      router.push('/admin');
+      setLoading(false);
+      return;
+    }
+
+    // 2. Fallback to Firebase Auth for regular admins
     try {
       await signInWithEmailAndPassword(auth, email, password);
       toast({ title: "Admin Authenticated", description: "Verifying system privileges..." });

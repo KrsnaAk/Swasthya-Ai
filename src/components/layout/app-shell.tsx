@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { 
   Sidebar, 
@@ -31,6 +31,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const auth = useAuth();
   const db = useFirestore();
 
+  const [isDemoAdmin, setIsDemoAdmin] = useState(false);
+
+  useEffect(() => {
+    // Check demo access from localStorage
+    const demoAccess = localStorage.getItem("demoAdminAccess") === "true";
+    setIsDemoAdmin(demoAccess);
+  }, [pathname]);
+
   const userDocRef = useMemoFirebase(() => {
     if (!db || !user?.uid) return null;
     return doc(db, 'users', user.uid);
@@ -42,16 +50,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const verificationStatus = profile?.verificationStatus || "pending";
 
   const filteredNavItems = useMemo(() => {
-    return navItems.filter(item => item.roles.includes(userRole));
-  }, [userRole]);
+    // If demo admin, show admin nav items
+    const effectiveRole = isDemoAdmin ? "admin" : userRole;
+    return navItems.filter(item => item.roles.includes(effectiveRole));
+  }, [userRole, isDemoAdmin]);
 
   useEffect(() => {
     // PUBLIC ROUTES - No redirect needed
-    const publicPages = ['/login', '/signup', '/forgot-password', '/', '/doctor-auth', '/admin-auth'];
+    const publicPages = ['/login', '/signup', '/forgot-password', '/', '/doctor-auth', '/admin-auth', '/admin-bootstrap'];
     const isPublicPage = publicPages.includes(pathname);
 
-    if (!isUserLoading && !user && !isPublicPage) {
-      // SMART REDIRECT - Send to correct auth page based on target area
+    // If no user and NOT demo admin and NOT public page, redirect
+    if (!isUserLoading && !user && !isDemoAdmin && !isPublicPage) {
       if (pathname.startsWith('/doctor')) {
         router.push('/doctor-auth');
       } else if (pathname.startsWith('/admin')) {
@@ -60,14 +70,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         router.push('/login');
       }
     }
-  }, [user, isUserLoading, pathname, router]);
+  }, [user, isUserLoading, pathname, router, isDemoAdmin]);
 
   const handleSignOut = async () => {
+    localStorage.removeItem("demoAdminAccess");
+    localStorage.removeItem("demoAdminEmail");
     await signOut(auth);
     router.push('/login');
   };
 
-  // While checking auth or profile, show loading to prevent UI flickering or unauthorized content flashes
   if (isUserLoading || (user && isProfileLoading)) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -76,13 +87,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const isPublicPage = ['/login', '/signup', '/forgot-password', '/', '/doctor-auth', '/admin-auth'].includes(pathname);
+  const isPublicPage = ['/login', '/signup', '/forgot-password', '/', '/doctor-auth', '/admin-auth', '/admin-bootstrap'].includes(pathname);
   if (isPublicPage) return <>{children}</>;
 
   // --- Strict Role Based Guards ---
 
-  // 1. Admin Guard
-  if (pathname.startsWith('/admin') && userRole !== 'admin') {
+  // 1. Admin Guard (Includes Demo Bypass)
+  if (pathname.startsWith('/admin') && userRole !== 'admin' && !isDemoAdmin) {
     return (
       <AccessDenied 
         title="Admin Restricted" 
@@ -168,9 +179,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <User className="h-5 w-5 text-primary" />
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-xs font-bold truncate leading-none mb-1">{profile?.name || 'User'}</span>
+                <span className="text-xs font-bold truncate leading-none mb-1">
+                  {isDemoAdmin ? localStorage.getItem("demoAdminEmail") : (profile?.name || 'User')}
+                </span>
                 <Badge variant="outline" className="text-[8px] h-4 uppercase font-bold tracking-tighter w-fit">
-                   {userRole}
+                   {isDemoAdmin ? "DEMO ADMIN" : userRole}
                 </Badge>
               </div>
             </div>
@@ -194,12 +207,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
             <div className="flex items-center gap-4 text-xs font-bold text-muted-foreground">
               <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-              SECURE CLINICAL SESSION
+              {isDemoAdmin ? "DEMO ADMINISTRATIVE SESSION" : "SECURE CLINICAL SESSION"}
             </div>
           </header>
           <main className="flex-1 overflow-y-auto p-8 relative">
             {children}
-            {userRole === 'patient' && <ChatbotButton />}
+            {userRole === 'patient' && !isDemoAdmin && <ChatbotButton />}
           </main>
         </SidebarInset>
       </div>

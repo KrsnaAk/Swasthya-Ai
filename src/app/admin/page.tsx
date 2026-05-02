@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/app-shell';
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, orderBy, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -9,6 +9,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { 
   Loader2, 
   CheckCircle, 
@@ -21,18 +22,28 @@ import {
   FileText, 
   ExternalLink,
   ClipboardCheck,
-  Briefcase
+  Briefcase,
+  AlertTriangle,
+  LogOut
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { useRouter } from 'next/navigation';
 
 export default function AdminPage() {
   const db = useFirestore();
   const { user: adminUser } = useUser();
   const { toast } = useToast();
+  const router = useRouter();
   const [selectedDoctor, setSelectedDoctor] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [isDemoMode, setIsDemoMode] = useState(false);
+
+  useEffect(() => {
+    const isDemo = localStorage.getItem("demoAdminAccess") === "true";
+    setIsDemoMode(isDemo);
+  }, []);
 
   const applicationsQuery = useMemoFirebase(() => {
     if (!db) return null;
@@ -41,15 +52,22 @@ export default function AdminPage() {
 
   const { data: applications, isLoading } = useCollection(applicationsQuery);
 
+  const handleDemoLogout = () => {
+    localStorage.removeItem("demoAdminAccess");
+    localStorage.removeItem("demoAdminEmail");
+    toast({ title: "Demo Mode Terminated", description: "Returning to terminal..." });
+    router.push('/admin-auth');
+  };
+
   const handleReview = async (status: 'verified' | 'rejected') => {
-    if (!selectedDoctor || !db || !adminUser) return;
+    if (!selectedDoctor || !db) return;
     setIsProcessing(true);
     try {
       const docId = selectedDoctor.id;
       const updateData = {
         verificationStatus: status,
         reviewedAt: serverTimestamp(),
-        reviewedBy: adminUser.uid,
+        reviewedBy: adminUser?.uid || 'demo-admin',
         rejectionReason: status === 'rejected' ? rejectionReason : null
       };
 
@@ -71,7 +89,7 @@ export default function AdminPage() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading && !isDemoMode) {
     return (
       <AppShell>
         <div className="flex h-[60vh] w-full items-center justify-center">
@@ -84,6 +102,29 @@ export default function AdminPage() {
   return (
     <AppShell>
       <div className="max-w-6xl mx-auto space-y-8">
+        {isDemoMode && (
+          <div className="bg-amber-500/10 border-2 border-amber-500/20 p-6 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl animate-in fade-in slide-in-from-top-4 duration-500">
+             <div className="flex items-center gap-4">
+                <div className="bg-amber-500 p-3 rounded-2xl text-black animate-pulse">
+                   <AlertTriangle className="h-6 w-6" />
+                </div>
+                <div>
+                   <h3 className="text-amber-500 font-black uppercase tracking-widest text-sm">Demo Administration Active</h3>
+                   <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+                     You are accessing clinical controls via the demo bypass. Replace with Firebase RBAC before production deployment.
+                   </p>
+                </div>
+             </div>
+             <Button 
+               variant="outline" 
+               className="border-amber-500/30 text-amber-500 hover:bg-amber-500/10 h-12 font-bold px-8 rounded-xl"
+               onClick={handleDemoLogout}
+             >
+                <LogOut className="h-4 w-4 mr-2" /> EXIT DEMO TERMINAL
+             </Button>
+          </div>
+        )}
+
         <div className="flex justify-between items-center">
            <div>
               <h1 className="text-3xl font-headline font-bold">Admin Portal</h1>
@@ -141,6 +182,13 @@ export default function AdminPage() {
                     </TableCell>
                   </TableRow>
                 ))}
+                {(!applications || applications.length === 0) && !isLoading && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-10 text-muted-foreground italic">
+                      No clinical applications found in records.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>
