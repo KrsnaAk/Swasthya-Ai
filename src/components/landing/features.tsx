@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -36,7 +35,7 @@ const features = [
   },
   {
     title: "Digital Health Records",
-    desc: "Store and access your medical history securely with ABHA integration.",
+    desc: "Store and access your medical history securely with clinical synchronization.",
     icon: FileHeart
   },
   {

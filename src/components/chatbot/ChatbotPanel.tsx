@@ -352,7 +352,7 @@ export function ChatbotPanel({ onClose }: ChatbotPanelProps) {
             <h3 className="font-headline font-bold text-base leading-tight tracking-tight">{t('chatbot_title', activeLang)}</h3>
             <div className="flex items-center gap-2 mt-1">
               <span className="h-1.5 w-1.5 rounded-full bg-accent-foreground/50 animate-pulse" />
-              <span className="text-[10px] font-black opacity-80 uppercase tracking-widest">Medical Assistant v2</span>
+              <span className="text-[10px] font-black opacity-80 uppercase tracking-widest">Medical Assistant</span>
             </div>
           </div>
         </div>

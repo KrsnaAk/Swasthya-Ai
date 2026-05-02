@@ -46,7 +46,7 @@ export const exportToPDF = async (data: ExportData) => {
     body: [
       ['Full Name', data.patient.name || 'Not provided'],
       ['Age / Gender', `${data.patient.age || 'N/A'} / ${data.patient.gender || 'N/A'}`],
-      ['ABHA ID', data.patient.abhaId || 'Not provided'],
+      ['Patient ID', data.patient.abhaId || 'Not provided'],
     ],
     theme: 'striped',
     headStyles: { fillColor: [0, 109, 119] }

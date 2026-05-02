@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -8,7 +7,7 @@ const visions = [
   { title: "Wearable Integration", desc: "Sync real-time vitals for proactive monitoring.", icon: Watch },
   { title: "Live Consultations", desc: "Instant video sessions with verified specialists.", icon: Video },
   { title: "Predictive Analytics", desc: "Disease prediction using longitudinal history.", icon: LineChart },
-  { title: "Govt. Integration", desc: "Deep synchronization with ABHA & Ayushman Bharat.", icon: Building }
+  { title: "Health Ecosystem Sync", desc: "Deep synchronization with clinical standards & ID systems.", icon: Building }
 ];
 
 export function LandingFuture() {

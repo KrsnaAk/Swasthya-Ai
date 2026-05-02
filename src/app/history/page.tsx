@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo } from "react";
@@ -169,7 +168,7 @@ export default function UnifiedHistoryPage() {
           <div className="text-center py-20 border border-dashed border-border rounded-3xl">
             <History className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
             <h3 className="text-xl font-bold">No Records Found</h3>
-            <p className="text-muted-foreground mb-6">Complete a triage assessment or link your ABHA ID to see your history.</p>
+            <p className="text-muted-foreground mb-6">Complete a triage assessment or link your Patient ID to see your history.</p>
             <Button asChild className="bg-primary text-primary-foreground">
               <Link href="/triage">Start First Triage</Link>
             </Button>

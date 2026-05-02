@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from "react";
@@ -140,13 +139,13 @@ export default function RecordsPage() {
     }
   };
 
-  const syncABHA = async () => {
+  const syncHealthRecords = async () => {
     setIsSyncing(true);
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // Mock data fetched from "ABHA Ecosystem"
-    const abhaMock = {
+    // Mock data fetched from demo ecosystem
+    const mockData = {
       bloodGroup: "O+",
       allergies: "Penicillin, Peanuts",
       existingDiseases: "Hypertension (Diagnosed 2021)",
@@ -154,10 +153,10 @@ export default function RecordsPage() {
       vaccinationNotes: "COVID-19 Full Course, Hepatitis B Completed",
     };
 
-    setFormData(prev => ({ ...prev, ...abhaMock }));
+    setFormData(prev => ({ ...prev, ...mockData }));
     setIsSyncing(false);
     toast({
-      title: "ABHA Sync Complete",
+      title: "Sync Complete",
       description: "External medical records have been synchronized.",
     });
   };
@@ -177,18 +176,18 @@ export default function RecordsPage() {
       <div className="max-w-5xl mx-auto space-y-8 pb-12">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-headline font-bold">Health Records (ABHA)</h1>
+            <h1 className="text-3xl font-headline font-bold">Health Records</h1>
             <p className="text-muted-foreground italic">Maintain your digital health ID for faster clinical decisions.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button 
               variant="secondary" 
               className="gap-2 bg-primary/10 text-primary hover:bg-primary/20"
-              onClick={syncABHA}
+              onClick={syncHealthRecords}
               disabled={isSyncing}
             >
               {isSyncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-              Sync with ABHA Portal
+              Sync with Health Portal
             </Button>
             {profile && user && (
               <DoctorSummaryDialog 
@@ -226,7 +225,7 @@ export default function RecordsPage() {
               <CardContent className="p-6 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="abhaId">ABHA ID (Digital Health ID)</Label>
+                    <Label htmlFor="abhaId">Patient ID (Digital Health ID)</Label>
                     <Input id="abhaId" placeholder="XX-XXXX-XXXX-XXXX" value={formData.abhaId} onChange={handleInputChange} />
                   </div>
                   <div className="space-y-2">

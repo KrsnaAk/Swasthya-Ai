@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview This file implements a Genkit flow for generating a professional doctor summary.
@@ -53,7 +52,7 @@ const summaryPrompt = ai.definePrompt({
 - Name: {{{profile.name}}}
 - Age: {{{profile.age}}}
 - Gender: {{{profile.gender}}}
-- ABHA ID: {{{profile.abhaId}}}
+- Patient ID: {{{profile.abhaId}}}
 - Blood Group: {{{profile.bloodGroup}}}
 
 ### MEDICAL CONTEXT:

@@ -77,7 +77,7 @@ export default function ConsultationModePage() {
         return `CLINICAL SUMMARY (Auto-generated from records)
 Patient: ${profile.name || 'Not provided'}, ${profile.age || 'N/A'}-year-old ${profile.gender || 'N/A'}
 Blood Group: ${profile.bloodGroup || 'Not provided'}
-ABHA ID: ${profile.abhaId || 'Not provided'}
+Patient ID: ${profile.abhaId || 'Not provided'}
 
 KNOWN CONDITIONS:
 ${profile.existingDiseases || 'None reported'}
@@ -193,7 +193,7 @@ It is intended for clinical review and is not a medical diagnosis.`;
                   <div className="text-center py-12 space-y-4">
                     <ClipboardList className="h-12 w-12 text-muted-foreground/30 mx-auto" />
                     <p className="text-muted-foreground">No health records or summaries found.</p>
-                    <Button variant="secondary" asChild><a href="/records">Prepare Records</a></Button>
+                    <Button variant="secondary" asChild><Link href="/records">Prepare Records</Link></Button>
                   </div>
                 )}
               </CardContent>
@@ -255,7 +255,7 @@ It is intended for clinical review and is not a medical diagnosis.`;
                     <p className="font-medium text-foreground">{profile?.bloodGroup || 'Not set'}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground uppercase font-bold tracking-tighter">ABHA ID</p>
+                    <p className="text-xs text-muted-foreground uppercase font-bold tracking-tighter">Patient ID</p>
                     <p className="font-medium text-foreground">{profile?.abhaId || 'Not linked'}</p>
                   </div>
                 </div>

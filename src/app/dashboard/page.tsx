@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from "react";
@@ -121,11 +120,11 @@ export default function DashboardPage() {
                 <FileText className="h-7 w-7 text-primary" />
               </div>
               <CardTitle className="text-xl">Health Records</CardTitle>
-              <CardDescription className="text-sm">Secure clinical profile & ABHA history.</CardDescription>
+              <CardDescription className="text-sm">Secure clinical profile & history.</CardDescription>
             </CardHeader>
             <CardContent className="px-8 pb-8">
               <div className="p-4 rounded-2xl bg-muted/40 border border-border/50 mb-6">
-                 <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Current ID</p>
+                 <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Patient ID</p>
                  <p className="text-sm font-mono truncate">{profile?.abhaId || 'Not Linked'}</p>
               </div>
               <Button variant="link" asChild className="p-0 text-primary font-bold group-hover:translate-x-1 transition-transform">

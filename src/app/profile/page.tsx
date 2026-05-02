@@ -173,7 +173,7 @@ export default function ProfilePage() {
                 <Input id="city" value={formData.city} onChange={handleInputChange} disabled={!isEditing} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="abhaId">ABHA ID</Label>
+                <Label htmlFor="abhaId">Patient ID</Label>
                 <Input id="abhaId" value={formData.abhaId || ''} onChange={handleInputChange} disabled={!isEditing} placeholder="XX-XXXX-XXXX-XXXX" />
               </div>
               

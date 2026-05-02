@@ -119,7 +119,7 @@ export default function SignupPage() {
               <h3 className="text-sm font-semibold uppercase tracking-wider text-primary pt-2">Emergency</h3>
               <div className="space-y-2"><Label htmlFor="emergencyContactName">Contact Name</Label><Input id="emergencyContactName" value={formData.emergencyContactName} onChange={handleInputChange} required /></div>
               <div className="space-y-2"><Label htmlFor="emergencyContactPhone">Contact Phone</Label><Input id="emergencyContactPhone" value={formData.emergencyContactPhone} onChange={handleInputChange} required /></div>
-              <div className="space-y-2"><Label htmlFor="abhaId">ABHA ID</Label><Input id="abhaId" placeholder="XX-XXXX-XXXX-XXXX" value={formData.abhaId} onChange={handleInputChange} /></div>
+              <div className="space-y-2"><Label htmlFor="abhaId">Patient ID</Label><Input id="abhaId" placeholder="XX-XXXX-XXXX-XXXX" value={formData.abhaId} onChange={handleInputChange} /></div>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4 mt-6">
