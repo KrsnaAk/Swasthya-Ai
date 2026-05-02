@@ -341,9 +341,9 @@ export function ChatbotPanel({ onClose }: ChatbotPanelProps) {
   };
 
   return (
-    <div className="fixed bottom-24 right-6 w-[420px] h-[640px] max-h-[85vh] flex flex-col glass-panel rounded-[2rem] overflow-hidden z-50 animate-in slide-in-from-bottom-6 duration-500 shadow-[0_32px_64px_rgba(0,0,0,0.5)] border-white/10">
+    <div className="fixed bottom-24 right-6 w-[420px] h-[640px] max-h-[85vh] flex flex-col bg-card/90 backdrop-blur-2xl rounded-[2.5rem] overflow-hidden z-50 animate-in slide-in-from-bottom-6 duration-500 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.6),0_0_50px_-12px_rgba(0,166,180,0.3)] border-2 border-white/10 ring-1 ring-white/5">
       {/* Header */}
-      <div className="bg-primary p-5 flex items-center justify-between text-primary-foreground shadow-xl relative z-10">
+      <div className="bg-primary p-5 flex items-center justify-between text-primary-foreground shadow-2xl relative z-10 border-b border-white/10">
         <div className="flex items-center gap-4">
           <div className="bg-white/20 p-2.5 rounded-2xl heartbeat shadow-inner">
             <Sparkles className="h-5 w-5" />
@@ -382,7 +382,7 @@ export function ChatbotPanel({ onClose }: ChatbotPanelProps) {
       </div>
 
       {/* Warning Bar */}
-      <div className="bg-destructive/10 border-b border-white/5 p-2 text-[9px] text-destructive font-black text-center uppercase tracking-[0.2em] flex items-center justify-center gap-2">
+      <div className="bg-destructive/10 border-b border-white/10 p-2 text-[9px] text-destructive font-black text-center uppercase tracking-[0.2em] flex items-center justify-center gap-2">
         <ShieldCheck className="h-3 w-3" /> Secure AI Assessment • Not for Diagnosis
       </div>
 
@@ -433,7 +433,7 @@ export function ChatbotPanel({ onClose }: ChatbotPanelProps) {
       )}
 
       {/* Input Area */}
-      <div className="p-5 bg-background/80 backdrop-blur-xl border-t border-white/5 flex items-center gap-3">
+      <div className="p-5 bg-background/80 backdrop-blur-xl border-t border-white/10 flex items-center gap-3">
         <Button 
           variant={isListening ? "destructive" : "ghost"} 
           size="icon" 
