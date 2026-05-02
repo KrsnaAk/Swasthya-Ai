@@ -10,10 +10,23 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function getRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && getRole() == 'admin';
+    }
+
+    function isVerifiedDoctor() {
+      return isSignedIn() && getRole() == 'doctor' && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.verificationStatus == 'verified';
+    }
+
     match /users/{userId} {
-      allow get, list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
+      allow get: if isSignedIn(); // Allow reading profile for chat/search
+      allow list: if isSignedIn(); // Allow searching for doctor buddy or patient search
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isOwner(userId) || isAdmin();
       allow delete: if isOwner(userId);
 
       match /triageAssessments/{triageId} {
@@ -38,6 +51,21 @@ service cloud.firestore {
       }
     }
 
+    match /doctorApplications/{appId} {
+      allow read: if isAdmin() || (isSignedIn() && appId == request.auth.uid);
+      allow create: if isSignedIn() && appId == request.auth.uid;
+      allow update: if isAdmin();
+      allow list: if isAdmin();
+    }
+
+    match /consultationChats/{chatId} {
+      allow read, write: if isSignedIn() && (chatId.contains(request.auth.uid));
+      
+      match /messages/{msgId} {
+        allow read, write: if isSignedIn() && (get(/databases/$(database)/documents/consultationChats/$(chatId)).data.chatId.contains(request.auth.uid));
+      }
+    }
+
     match /sos_alerts/{alertId} {
       allow get: if isSignedIn();
       allow list: if isSignedIn();
@@ -47,17 +75,9 @@ service cloud.firestore {
     }
 
     match /medical_imaging_reports/{reportId} {
-      // Allow user to read and create their own reports
-      allow get, list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow get, list: if isSignedIn() && (resource.data.userId == request.auth.uid || isVerifiedDoctor());
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      
-      // Allow doctor review workflow (based on mock isDoctor flag or owner access)
-      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || request.resource.data.isDoctor == true);
-    }
-
-    // Collection Group rule for Public Health Trends
-    match /{path=**}/triageAssessments/{triageId} {
-      allow list: if isSignedIn();
+      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isVerifiedDoctor());
     }
   }
 }

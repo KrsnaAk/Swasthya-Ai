@@ -1,7 +1,6 @@
-
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { 
   Sidebar, 
@@ -17,12 +16,13 @@ import {
 } from "@/components/ui/sidebar";
 import { navItems } from "./nav-config";
 import { Button } from "@/components/ui/button";
-import { HeartPulse, LogOut, Loader2, User } from "lucide-react";
+import { HeartPulse, LogOut, Loader2, User, ShieldAlert } from "lucide-react";
 import { useAuth, useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { signOut } from "firebase/auth";
 import { ChatbotButton } from "@/components/chatbot/ChatbotButton";
 import NextLink from "next/link";
 import { doc } from "firebase/firestore";
+import { Badge } from "@/components/ui/badge";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -36,7 +36,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return doc(db, 'users', user.uid);
   }, [db, user?.uid]);
 
-  const { data: profile } = useDoc(userDocRef);
+  const { data: profile, isLoading: isProfileLoading } = useDoc(userDocRef);
+
+  const userRole = profile?.role || "patient";
+  const verificationStatus = profile?.verificationStatus || "pending";
+
+  const filteredNavItems = useMemo(() => {
+    return navItems.filter(item => item.roles.includes(userRole));
+  }, [userRole]);
 
   useEffect(() => {
     if (!isUserLoading && !user && pathname !== '/login' && pathname !== '/signup' && pathname !== '/forgot-password' && pathname !== '/') {
@@ -49,7 +56,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     router.push('/login');
   };
 
-  if (isUserLoading) {
+  if (isUserLoading || isProfileLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -59,6 +66,32 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const isPublicPage = ['/login', '/signup', '/forgot-password', '/'].includes(pathname);
   if (isPublicPage) return <>{children}</>;
+
+  // Doctor Access Guard
+  if (userRole === 'doctor' && verificationStatus !== 'verified' && pathname !== '/dashboard' && pathname !== '/profile') {
+    return (
+       <SidebarProvider>
+          <div className="flex min-h-screen w-full">
+            <SidebarInset className="flex-1 flex flex-col items-center justify-center bg-background p-8">
+               <div className="max-w-md w-full text-center space-y-6">
+                  <div className="bg-amber-500/10 p-6 rounded-full w-fit mx-auto animate-pulse">
+                    <ShieldAlert className="h-16 w-16 text-amber-500" />
+                  </div>
+                  <h1 className="text-3xl font-headline font-bold">Verification Pending</h1>
+                  <p className="text-muted-foreground">
+                    Your doctor profile is currently under review by our medical administration team. 
+                    You will gain access to the clinical dashboard once verified.
+                  </p>
+                  <div className="flex gap-4 justify-center">
+                    <Button variant="outline" asChild><NextLink href="/profile">View Profile</NextLink></Button>
+                    <Button onClick={handleSignOut} variant="ghost">Sign Out</Button>
+                  </div>
+               </div>
+            </SidebarInset>
+          </div>
+       </SidebarProvider>
+    );
+  }
 
   return (
     <SidebarProvider>
@@ -77,7 +110,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </SidebarHeader>
           <SidebarContent className="px-4 py-4">
             <SidebarMenu>
-              {navItems.map((item) => (
+              {filteredNavItems.map((item) => (
                 <SidebarMenuItem key={item.title} className="mb-1">
                   <SidebarMenuButton asChild isActive={pathname === item.href} className="rounded-xl h-11 px-4 transition-all">
                     <NextLink href={item.href} className="flex items-center gap-4">
@@ -92,13 +125,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </SidebarMenu>
           </SidebarContent>
           <SidebarFooter className="p-4 border-t border-white/5">
-            <div className="p-4 mb-4 rounded-2xl bg-primary/5 border border-primary/10 flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <div className="p-4 mb-4 rounded-2xl bg-primary/5 border border-primary/10 flex items-center gap-3 overflow-hidden">
+              <div className="h-10 w-10 shrink-0 rounded-xl bg-primary/10 flex items-center justify-center">
                 <User className="h-5 w-5 text-primary" />
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="text-xs font-bold truncate leading-none mb-1">{profile?.name || 'User'}</span>
-                <span className="text-[10px] text-muted-foreground uppercase font-medium tracking-tighter">Clinical Account</span>
+                <Badge variant="outline" className="text-[8px] h-4 uppercase font-bold tracking-tighter w-fit">
+                   {userRole}
+                </Badge>
               </div>
             </div>
             <Button 
@@ -116,17 +151,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-4">
               <SidebarTrigger className="md:hidden" />
               <h2 className="font-headline font-bold text-lg medical-gradient-text uppercase tracking-wider">
-                {navItems.find(item => item.href === pathname)?.title || "Dashboard"}
+                {filteredNavItems.find(item => item.href === pathname)?.title || "Dashboard"}
               </h2>
             </div>
             <div className="flex items-center gap-4 text-xs font-bold text-muted-foreground">
               <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-              ENCRYPTED CLOUD SYNC
+              SECURE CLINICAL SESSION
             </div>
           </header>
           <main className="flex-1 overflow-y-auto p-8 relative">
             {children}
-            <ChatbotButton />
+            {userRole === 'patient' && <ChatbotButton />}
           </main>
         </SidebarInset>
       </div>
