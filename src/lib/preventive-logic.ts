@@ -67,7 +67,7 @@ export function assessPreventiveRisk(input: PreventiveInput): AssessmentResult {
   const cardiacRisk: RiskLevel = cardiacScore >= 60 ? 'High' : cardiacScore >= 30 ? 'Moderate' : 'Low';
 
   // Wellness Score (1-100)
-  let wellnessScore = 100;
+  let wellnessScore = 72;
   if (input.isSmoking) wellnessScore -= 20;
   if (input.isAlcohol) wellnessScore -= 10;
   if (input.sleepHours < 6) wellnessScore -= 15;
