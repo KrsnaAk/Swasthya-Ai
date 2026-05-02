@@ -16,7 +16,8 @@ import {
   ShieldAlert, 
   Navigation,
   ArrowRight,
-  Calendar
+  Calendar,
+  FileText
 } from "lucide-react";
 import { useUser, useFirestore, useMemoFirebase, useCollection } from "@/firebase";
 import { collection, query, where, orderBy } from "firebase/firestore";
