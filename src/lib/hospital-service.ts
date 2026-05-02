@@ -1,6 +1,6 @@
 /**
  * @fileOverview Hospital Service for SwasthyaAI.
- * Manages hospital data retrieval and filtering logic.
+ * Manages facility data retrieval, filtering, and geolocation-based discovery.
  */
 
 export type FacilityType = 'Public Hospital' | 'Private Hospital' | 'Clinic' | 'Specialized Emergency';
@@ -15,11 +15,13 @@ export interface Hospital {
   status: string;
   phone: string;
   city: string;
+  state: string;
   coordinates: { lat: number; lng: number };
   isEmergencyReady: boolean;
 }
 
 const MOCK_HOSPITALS: Hospital[] = [
+  // Mumbai
   {
     id: 'h1',
     name: "City General Hospital",
@@ -30,21 +32,9 @@ const MOCK_HOSPITALS: Hospital[] = [
     status: "Open 24/7",
     phone: "+91 22 1234 5678",
     city: "Mumbai",
+    state: "Maharashtra",
     coordinates: { lat: 18.937, lng: 72.825 },
     isEmergencyReady: true
-  },
-  {
-    id: 'h2',
-    name: "Unity Health Clinic",
-    type: 'Clinic',
-    distance: "2.5 km",
-    rating: 4.8,
-    address: "45 Care Lane, Wellness District",
-    status: "Open until 8:00 PM",
-    phone: "+91 22 2345 6789",
-    city: "Mumbai",
-    coordinates: { lat: 18.940, lng: 72.830 },
-    isEmergencyReady: false
   },
   {
     id: 'h3',
@@ -56,52 +46,141 @@ const MOCK_HOSPITALS: Hospital[] = [
     status: "Open 24/7",
     phone: "+91 22 3456 7890",
     city: "Mumbai",
+    state: "Maharashtra",
     coordinates: { lat: 18.930, lng: 72.810 },
     isEmergencyReady: true
   },
+  // Bhopal, MP
   {
-    id: 'h4',
-    name: "Holy Spirit Hospital",
-    type: 'Private Hospital',
-    distance: "4.1 km",
-    rating: 4.3,
-    address: "Mahakali Caves Rd, Andheri East",
+    id: 'b1',
+    name: "Hamidia Hospital",
+    type: 'Public Hospital',
+    distance: "2.5 km",
+    rating: 4.2,
+    address: "Royal Market, Medical College Campus",
     status: "Open 24/7",
-    phone: "+91 22 4567 8901",
-    city: "Mumbai",
-    coordinates: { lat: 19.120, lng: 72.870 },
+    phone: "+91 755 254 0500",
+    city: "Bhopal",
+    state: "Madhya Pradesh",
+    coordinates: { lat: 23.2599, lng: 77.4126 },
     isEmergencyReady: true
   },
   {
-    id: 'h5',
-    name: "Sunrise Child Clinic",
-    type: 'Clinic',
-    distance: "1.8 km",
+    id: 'b2',
+    name: "AIIMS Bhopal",
+    type: 'Public Hospital',
+    distance: "5.1 km",
+    rating: 4.7,
+    address: "Saket Nagar, AIIMS Campus",
+    status: "Open 24/7",
+    phone: "+91 755 267 2317",
+    city: "Bhopal",
+    state: "Madhya Pradesh",
+    coordinates: { lat: 23.2045, lng: 77.4528 },
+    isEmergencyReady: true
+  },
+  {
+    id: 'b3',
+    name: "Bansal Hospital",
+    type: 'Private Hospital',
+    distance: "3.4 km",
     rating: 4.6,
-    address: "Link Road, Borivali West",
-    status: "Open until 9:00 PM",
-    phone: "+91 22 5678 9012",
-    city: "Mumbai",
-    coordinates: { lat: 19.230, lng: 72.850 },
-    isEmergencyReady: false
+    address: "Shahpura, Near Manisha Market",
+    status: "Open 24/7",
+    phone: "+91 755 408 6000",
+    city: "Bhopal",
+    state: "Madhya Pradesh",
+    coordinates: { lat: 23.1950, lng: 77.4300 },
+    isEmergencyReady: true
+  },
+  // Indore, MP
+  {
+    id: 'i1',
+    name: "MY Hospital (Indore)",
+    type: 'Public Hospital',
+    distance: "1.5 km",
+    rating: 4.1,
+    address: "Agra Bombay Rd, Near MY Square",
+    status: "Open 24/7",
+    phone: "+91 731 252 7301",
+    city: "Indore",
+    state: "Madhya Pradesh",
+    coordinates: { lat: 22.7196, lng: 75.8577 },
+    isEmergencyReady: true
+  },
+  {
+    id: 'i2',
+    name: "Choithram Hospital",
+    type: 'Private Hospital',
+    distance: "6.2 km",
+    rating: 4.8,
+    address: "Manikbagh Road",
+    status: "Open 24/7",
+    phone: "+91 731 236 2491",
+    city: "Indore",
+    state: "Madhya Pradesh",
+    coordinates: { lat: 22.6900, lng: 75.8400 },
+    isEmergencyReady: true
+  },
+  // Gwalior, MP
+  {
+    id: 'g1',
+    name: "Jaya Arogya Hospital",
+    type: 'Public Hospital',
+    distance: "2.1 km",
+    rating: 4.0,
+    address: "Lashkar, Gwalior",
+    status: "Open 24/7",
+    phone: "+91 751 240 3400",
+    city: "Gwalior",
+    state: "Madhya Pradesh",
+    coordinates: { lat: 26.2183, lng: 78.1828 },
+    isEmergencyReady: true
+  },
+  // Raipur, CG
+  {
+    id: 'r1',
+    name: "Ramakrishna Care Hospital",
+    type: 'Private Hospital',
+    distance: "4.5 km",
+    rating: 4.5,
+    address: "Aurobindo Enclave, Pachpedi Naka",
+    status: "Open 24/7",
+    phone: "+91 771 300 3300",
+    city: "Raipur",
+    state: "Chhattisgarh",
+    coordinates: { lat: 21.2514, lng: 81.6296 },
+    isEmergencyReady: true
   }
 ];
 
-export async function getNearbyHospitals(city?: string, filterType?: string): Promise<Hospital[]> {
+export async function getNearbyHospitals(query?: string, filterType?: string): Promise<Hospital[]> {
   // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 800));
+  await new Promise(resolve => setTimeout(resolve, 600));
 
   let results = [...MOCK_HOSPITALS];
 
-  if (city) {
-    results = results.filter(h => h.city.toLowerCase().includes(city.toLowerCase()));
+  if (query) {
+    const q = query.toLowerCase();
+    results = results.filter(h => 
+      h.city.toLowerCase().includes(q) || 
+      h.state.toLowerCase().includes(q) || 
+      h.name.toLowerCase().includes(q) ||
+      (q === 'mp' && h.state.toLowerCase().includes('madhya pradesh'))
+    );
   }
 
   if (filterType && filterType !== 'all') {
     if (filterType === 'emergency') {
       results = results.filter(h => h.isEmergencyReady);
-    } else {
-      results = results.filter(h => h.type.toLowerCase().includes(filterType.toLowerCase()));
+    } else if (filterType === 'hospital') {
+      results = results.filter(h => h.type.includes('Hospital') || h.type.includes('Emergency'));
+    } else if (filterType === 'clinic') {
+      results = results.filter(h => h.type === 'Clinic');
+    } else if (filterType === 'government') {
+      results = results.filter(h => h.type === 'Public Hospital');
+    } else if (filterType === 'private') {
+      results = results.filter(h => h.type === 'Private Hospital');
     }
   }
 
@@ -110,5 +189,5 @@ export async function getNearbyHospitals(city?: string, filterType?: string): Pr
 
 export function getGoogleMapsUrl(hospital: Hospital): string {
   const query = encodeURIComponent(`${hospital.name}, ${hospital.address}`);
-  return `https://www.google.com/maps/search/?api=1&query=${query}`;
+  return `https://www.google.com/maps/dir/?api=1&destination=${hospital.coordinates.lat},${hospital.coordinates.lng}`;
 }
