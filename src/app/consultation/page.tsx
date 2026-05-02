@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useEffect } from "react";
+import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
