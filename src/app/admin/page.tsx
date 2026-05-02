@@ -2,21 +2,37 @@
 
 import React, { useState } from 'react';
 import { AppShell } from '@/components/layout/app-shell';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, orderBy, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, CheckCircle, XCircle, Eye, ShieldCheck, Mail, Phone, MapPin } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { 
+  Loader2, 
+  CheckCircle, 
+  XCircle, 
+  Eye, 
+  ShieldCheck, 
+  Mail, 
+  Phone, 
+  MapPin, 
+  FileText, 
+  ExternalLink,
+  ClipboardCheck,
+  Briefcase
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 export default function AdminPage() {
   const db = useFirestore();
+  const { user: adminUser } = useUser();
   const { toast } = useToast();
   const [selectedDoctor, setSelectedDoctor] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
 
   const applicationsQuery = useMemoFirebase(() => {
     if (!db) return null;
@@ -26,15 +42,19 @@ export default function AdminPage() {
   const { data: applications, isLoading } = useCollection(applicationsQuery);
 
   const handleReview = async (status: 'verified' | 'rejected') => {
-    if (!selectedDoctor || !db) return;
+    if (!selectedDoctor || !db || !adminUser) return;
     setIsProcessing(true);
     try {
       const docId = selectedDoctor.id;
-      // Update application
-      await updateDoc(doc(db, 'doctorApplications', docId), {
+      const updateData = {
         verificationStatus: status,
-        reviewedAt: serverTimestamp()
-      });
+        reviewedAt: serverTimestamp(),
+        reviewedBy: adminUser.uid,
+        rejectionReason: status === 'rejected' ? rejectionReason : null
+      };
+
+      // Update application
+      await updateDoc(doc(db, 'doctorApplications', docId), updateData);
       // Update user role/status
       await updateDoc(doc(db, 'users', docId), {
         verificationStatus: status,
@@ -43,6 +63,7 @@ export default function AdminPage() {
 
       toast({ title: `Doctor ${status}`, description: `Action applied to ${selectedDoctor.name}` });
       setSelectedDoctor(null);
+      setRejectionReason('');
     } catch (e) {
       toast({ variant: 'destructive', title: "Error", description: "Could not update status." });
     } finally {
@@ -66,7 +87,7 @@ export default function AdminPage() {
         <div className="flex justify-between items-center">
            <div>
               <h1 className="text-3xl font-headline font-bold">Admin Portal</h1>
-              <p className="text-muted-foreground">Manage healthcare professional verifications.</p>
+              <p className="text-muted-foreground">Manage healthcare professional verifications and proofs.</p>
            </div>
            <div className="flex gap-4">
               <Card className="bg-primary/5 p-4 border-primary/20">
@@ -78,16 +99,17 @@ export default function AdminPage() {
 
         <Card className="border-border bg-card">
           <CardHeader>
-            <CardTitle>Doctor Applications</CardTitle>
-            <CardDescription>Review credentials and license numbers for clinical verification.</CardDescription>
+            <CardTitle>Professional Applications</CardTitle>
+            <CardDescription>Review clinical credentials, medical licenses, and degree certificates.</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
+                  <TableHead>Full Name</TableHead>
                   <TableHead>Specialization</TableHead>
                   <TableHead>License #</TableHead>
+                  <TableHead>Documents</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -97,7 +119,13 @@ export default function AdminPage() {
                   <TableRow key={doc.id}>
                     <TableCell className="font-bold">{doc.name}</TableCell>
                     <TableCell>{doc.specialization}</TableCell>
-                    <TableCell className="font-mono text-xs">{doc.licenseNumber}</TableCell>
+                    <TableCell className="font-mono text-xs text-primary">{doc.licenseNumber}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        {doc.degreeUrl && <Badge variant="outline" className="text-[9px]"><FileText className="h-2 w-2 mr-1" /> Degree</Badge>}
+                        {doc.licenseUrl && <Badge variant="outline" className="text-[9px]"><ClipboardCheck className="h-2 w-2 mr-1" /> License</Badge>}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <Badge variant={
                         doc.verificationStatus === 'verified' ? 'default' : 
@@ -108,7 +136,7 @@ export default function AdminPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="sm" onClick={() => setSelectedDoctor(doc)}>
-                        <Eye className="h-4 w-4 mr-2" /> Review
+                        <Eye className="h-4 w-4 mr-2" /> Audit
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -119,52 +147,102 @@ export default function AdminPage() {
         </Card>
 
         <Dialog open={!!selectedDoctor} onOpenChange={(open) => !open && setSelectedDoctor(null)}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <ShieldCheck className="h-5 w-5 text-primary" /> Review Professional Credentials
+              <DialogTitle className="flex items-center gap-2 text-xl">
+                <ShieldCheck className="h-6 w-6 text-primary" /> Professional Credential Audit
               </DialogTitle>
-              <DialogDescription>Verify the identity and clinical authority of this professional.</DialogDescription>
+              <DialogDescription>Verify the identity and clinical authority of this professional against uploaded proofs.</DialogDescription>
             </DialogHeader>
             
             {selectedDoctor && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-6">
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-[10px] font-black uppercase text-muted-foreground mb-1 tracking-widest">Full Name</p>
-                    <p className="text-lg font-bold">{selectedDoctor.name}</p>
+              <div className="space-y-8 py-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-4 md:col-span-2">
+                    <div className="grid grid-cols-2 gap-6">
+                       <div>
+                          <p className="text-[10px] font-black uppercase text-muted-foreground mb-1 tracking-widest">Full Name</p>
+                          <p className="text-lg font-bold">{selectedDoctor.name}</p>
+                       </div>
+                       <div>
+                          <p className="text-[10px] font-black uppercase text-muted-foreground mb-1 tracking-widest">Experience</p>
+                          <p className="font-medium flex items-center gap-2"><Briefcase className="h-4 w-4 text-primary" /> {selectedDoctor.experienceYears} Years</p>
+                       </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-6">
+                       <div>
+                          <p className="text-[10px] font-black uppercase text-muted-foreground mb-1 tracking-widest">Medical License #</p>
+                          <p className="font-mono text-primary font-bold">{selectedDoctor.licenseNumber}</p>
+                       </div>
+                       <div>
+                          <p className="text-[10px] font-black uppercase text-muted-foreground mb-1 tracking-widest">Registration Council</p>
+                          <p className="font-bold">{selectedDoctor.registrationCouncil}</p>
+                       </div>
+                    </div>
+                    <div className="space-y-2 border-t border-border pt-4">
+                       <p className="flex items-center gap-2 text-sm"><Mail className="h-4 w-4 text-primary" /> {selectedDoctor.email}</p>
+                       <p className="flex items-center gap-2 text-sm"><Phone className="h-4 w-4 text-primary" /> {selectedDoctor.phone}</p>
+                       <p className="flex items-center gap-2 text-sm"><MapPin className="h-4 w-4 text-primary" /> {selectedDoctor.city}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-[10px] font-black uppercase text-muted-foreground mb-1 tracking-widest">Specialization</p>
-                    <p className="font-medium">{selectedDoctor.specialization} ({selectedDoctor.experienceYears} Years)</p>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="flex items-center gap-2 text-sm"><Mail className="h-4 w-4 text-primary" /> {selectedDoctor.email}</p>
-                    <p className="flex items-center gap-2 text-sm"><Phone className="h-4 w-4 text-primary" /> {selectedDoctor.phone}</p>
-                    <p className="flex items-center gap-2 text-sm"><MapPin className="h-4 w-4 text-primary" /> {selectedDoctor.city}</p>
+
+                  <div className="space-y-4">
+                    <div className="p-4 bg-muted/50 rounded-xl border border-border">
+                      <p className="text-[10px] font-black uppercase text-muted-foreground mb-2 tracking-widest">Clinical Workplace</p>
+                      <p className="font-bold text-sm">{selectedDoctor.clinicName}</p>
+                      <p className="text-xs text-muted-foreground leading-snug">{selectedDoctor.clinicAddress || 'Address not provided'}</p>
+                    </div>
+
+                    <div className="space-y-3">
+                       <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Verification Proofs</p>
+                       {selectedDoctor.degreeUrl && (
+                         <Button variant="outline" className="w-full justify-start h-11" asChild>
+                           <a href={selectedDoctor.degreeUrl} target="_blank" rel="noopener noreferrer">
+                              <FileText className="h-4 w-4 mr-2 text-primary" /> Degree Certificate <ExternalLink className="h-3 w-3 ml-auto opacity-50" />
+                           </a>
+                         </Button>
+                       )}
+                       {selectedDoctor.licenseUrl && (
+                         <Button variant="outline" className="w-full justify-start h-11" asChild>
+                           <a href={selectedDoctor.licenseUrl} target="_blank" rel="noopener noreferrer">
+                              <ClipboardCheck className="h-4 w-4 mr-2 text-primary" /> License Proof <ExternalLink className="h-3 w-3 ml-auto opacity-50" />
+                           </a>
+                         </Button>
+                       )}
+                    </div>
                   </div>
                 </div>
-                <div className="space-y-4">
-                  <div className="p-4 bg-muted/50 rounded-xl border border-border">
-                    <p className="text-[10px] font-black uppercase text-muted-foreground mb-2 tracking-widest">Clinic Context</p>
-                    <p className="font-bold">{selectedDoctor.clinicName}</p>
-                    <p className="text-xs text-muted-foreground">{selectedDoctor.clinicAddress}</p>
+
+                {selectedDoctor.verificationStatus === 'pending' && (
+                  <div className="space-y-4 border-t border-border pt-6">
+                    <Label className="text-xs font-bold uppercase">Decision Context / Rejection Reason</Label>
+                    <Textarea 
+                      placeholder="Enter reason if rejecting (e.g. License proof unclear, Registration Council mismatch)..."
+                      value={rejectionReason}
+                      onChange={(e) => setRejectionReason(e.target.value)}
+                      className="bg-muted/30"
+                    />
                   </div>
-                  <div>
-                    <p className="text-[10px] font-black uppercase text-muted-foreground mb-1 tracking-widest">Medical License #</p>
-                    <p className="font-mono text-primary font-bold">{selectedDoctor.licenseNumber}</p>
-                  </div>
-                </div>
+                )}
               </div>
             )}
 
-            <DialogFooter className="gap-2">
-              <Button variant="outline" className="text-destructive border-destructive/20 hover:bg-destructive/5" onClick={() => handleReview('rejected')} disabled={isProcessing}>
-                <XCircle className="h-4 w-4 mr-2" /> Reject Application
+            <DialogFooter className="gap-3 border-t border-border pt-6">
+              <Button 
+                variant="outline" 
+                className="text-destructive border-destructive/20 hover:bg-destructive/5 font-bold" 
+                onClick={() => handleReview('rejected')} 
+                disabled={isProcessing || (selectedDoctor?.verificationStatus === 'pending' && !rejectionReason.trim())}
+              >
+                <XCircle className="h-4 w-4 mr-2" /> Reject Credentials
               </Button>
-              <Button className="bg-primary text-primary-foreground font-bold" onClick={() => handleReview('verified')} disabled={isProcessing}>
+              <Button 
+                className="bg-primary text-primary-foreground font-black px-8" 
+                onClick={() => handleReview('verified')} 
+                disabled={isProcessing}
+              >
                 {isProcessing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-                Approve Professional Access
+                APPROVE PROFESSIONAL ACCESS
               </Button>
             </DialogFooter>
           </DialogContent>
