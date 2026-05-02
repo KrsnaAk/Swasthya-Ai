@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth, useUser, useFirestore, useFirebase } from '@/firebase';
@@ -22,6 +22,10 @@ export default function DoctorAuthPage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
+
+  // Refs for hidden file inputs to ensure reliable clicking
+  const degreeInputRef = useRef<HTMLInputElement | null>(null);
+  const licenseInputRef = useRef<HTMLInputElement | null>(null);
 
   const [formData, setFormData] = useState({
     email: '',
@@ -55,11 +59,40 @@ export default function DoctorAuthPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'degree' | 'license') => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast({ title: "File too large", description: "Max file size is 5MB", variant: "destructive" });
+      // 1. Extension & Type Validation
+      const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
+      const fileName = file.name.toLowerCase();
+      const hasValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext));
+      
+      const allowedMimeTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+      const hasValidMime = allowedMimeTypes.includes(file.type);
+
+      if (!hasValidExtension || !hasValidMime) {
+        toast({ 
+          title: "Invalid file type", 
+          description: "Only PDF, JPG, JPEG, PNG files are allowed.", 
+          variant: "destructive" 
+        });
+        e.target.value = '';
         return;
       }
+
+      // 2. Size Validation (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({ 
+          title: "File too large", 
+          description: "Only files under 5MB are allowed.", 
+          variant: "destructive" 
+        });
+        e.target.value = '';
+        return;
+      }
+
       setFiles(prev => ({ ...prev, [type]: file }));
+      toast({
+        title: "File Selected",
+        description: `${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB) is ready.`
+      });
     }
   };
 
@@ -194,7 +227,7 @@ export default function DoctorAuthPage() {
                   <h3 className="text-xs font-black uppercase text-primary tracking-widest border-b border-primary/10 pb-2">Identity Details</h3>
                   <div className="space-y-2">
                     <Label htmlFor="name">Full Name (as per registration)</Label>
-                    <Input id="name" placeholder="Dr. Jane Smith" value={formData.name} onChange={handleInputChange} required />
+                    <Input id="name" placeholder="Dr. Sneha" value={formData.name} onChange={handleInputChange} required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email">Work Email</Label>
@@ -214,7 +247,7 @@ export default function DoctorAuthPage() {
                   <h3 className="text-xs font-black uppercase text-primary tracking-widest border-b border-primary/10 pb-2">Professional Creds</h3>
                   <div className="space-y-2">
                     <Label htmlFor="licenseNumber">Medical License #</Label>
-                    <Input id="licenseNumber" placeholder="e.g. 12345/2023" value={formData.licenseNumber} onChange={handleInputChange} required />
+                    <Input id="licenseNumber" placeholder="e.g. DMC/12345/2018" value={formData.licenseNumber} onChange={handleInputChange} required />
                   </div>
                   <div className="space-y-2">
                     <Label>Registration Council</Label>
@@ -248,26 +281,65 @@ export default function DoctorAuthPage() {
               <div className="space-y-4">
                 <h3 className="text-xs font-black uppercase text-primary tracking-widest border-b border-primary/10 pb-2">Verification Documents</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="relative group">
+                  <div className="space-y-2">
                     <Label className="text-sm font-bold flex items-center gap-2 mb-2">
                       Degree Certificate (Required) <AlertCircle className="h-3 w-3 text-destructive" />
                     </Label>
-                    <div className="border-2 border-dashed border-border rounded-xl p-4 flex flex-col items-center justify-center gap-2 hover:border-primary/50 transition-colors bg-muted/20">
+                    <div 
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => degreeInputRef.current?.click()}
+                      onKeyDown={(e) => e.key === 'Enter' && degreeInputRef.current?.click()}
+                      className="relative group border-2 border-dashed border-border rounded-xl p-4 flex flex-col items-center justify-center gap-2 hover:border-primary/50 transition-colors bg-muted/20 cursor-pointer min-h-[120px]"
+                    >
                       {files.degree ? <FileCheck className="h-8 w-8 text-green-500" /> : <Upload className="h-8 w-8 text-muted-foreground" />}
-                      <span className="text-xs text-muted-foreground text-center truncate w-full">
-                        {files.degree ? files.degree.name : "PDF, JPG, PNG (Max 5MB)"}
-                      </span>
-                      <Input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf,image/*" onChange={(e) => handleFileChange(e, 'degree')} />
+                      <div className="text-center w-full px-2">
+                        {files.degree ? (
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="text-xs font-bold text-primary truncate max-w-full">{files.degree.name}</span>
+                            <span className="text-[10px] text-muted-foreground">({(files.degree.size / (1024 * 1024)).toFixed(2)} MB)</span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">PDF, JPG, PNG (Max 5MB)</span>
+                        )}
+                      </div>
+                      <input 
+                        type="file" 
+                        ref={degreeInputRef}
+                        className="hidden" 
+                        accept=".pdf,.jpg,.jpeg,.png" 
+                        onChange={(e) => handleFileChange(e, 'degree')} 
+                      />
                     </div>
                   </div>
-                  <div className="relative group">
+
+                  <div className="space-y-2">
                     <Label className="text-sm font-bold mb-2 block">License Proof (Optional)</Label>
-                    <div className="border-2 border-dashed border-border rounded-xl p-4 flex flex-col items-center justify-center gap-2 hover:border-primary/50 transition-colors bg-muted/20">
+                    <div 
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => licenseInputRef.current?.click()}
+                      onKeyDown={(e) => e.key === 'Enter' && licenseInputRef.current?.click()}
+                      className="relative group border-2 border-dashed border-border rounded-xl p-4 flex flex-col items-center justify-center gap-2 hover:border-primary/50 transition-colors bg-muted/20 cursor-pointer min-h-[120px]"
+                    >
                       {files.license ? <FileCheck className="h-8 w-8 text-green-500" /> : <Upload className="h-8 w-8 text-muted-foreground" />}
-                      <span className="text-xs text-muted-foreground text-center truncate w-full">
-                        {files.license ? files.license.name : "Identity proof of license"}
-                      </span>
-                      <Input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf,image/*" onChange={(e) => handleFileChange(e, 'license')} />
+                      <div className="text-center w-full px-2">
+                        {files.license ? (
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="text-xs font-bold text-primary truncate max-w-full">{files.license.name}</span>
+                            <span className="text-[10px] text-muted-foreground">({(files.license.size / (1024 * 1024)).toFixed(2)} MB)</span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Identity proof of license</span>
+                        )}
+                      </div>
+                      <input 
+                        type="file" 
+                        ref={licenseInputRef}
+                        className="hidden" 
+                        accept=".pdf,.jpg,.jpeg,.png" 
+                        onChange={(e) => handleFileChange(e, 'license')} 
+                      />
                     </div>
                   </div>
                 </div>
