@@ -250,18 +250,18 @@ export default function TriagePage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-3">
-                  <Label htmlFor="duration" className="font-bold">Duration (Days)</Label>
+                  <Label htmlFor="duration" className="font-bold">{t('duration', activeLang)}</Label>
                   <Input id="duration" type="number" className="rounded-xl h-12 bg-background/50" value={formData.duration} onChange={(e) => setFormData({...formData, duration: Number(e.target.value)})} />
                 </div>
                 <div className="space-y-3">
-                  <Label htmlFor="age" className="font-bold">Patient Age</Label>
+                  <Label htmlFor="age" className="font-bold">{t('patientAge', activeLang)}</Label>
                   <Input id="age" type="number" className="rounded-xl h-12 bg-background/50" value={formData.age} onChange={(e) => setFormData({...formData, age: Number(e.target.value)})} />
                 </div>
               </div>
 
               <div className="space-y-6 pt-4">
                 <div className="flex justify-between items-center">
-                  <Label className="text-lg font-bold">Pain Severity (1-10)</Label>
+                  <Label className="text-lg font-bold">{t('painSeverity', activeLang)}</Label>
                   <span className={cn(
                     "font-black text-xl w-12 h-12 flex items-center justify-center rounded-2xl shadow-inner", 
                     formData.painSeverity >= 8 ? "bg-destructive text-destructive-foreground" : 
@@ -274,22 +274,22 @@ export default function TriagePage() {
               </div>
 
               <div className="space-y-6 pt-8 border-t border-white/5">
-                <h3 className="text-xs font-black text-primary uppercase tracking-[0.2em]">Safety Screen Checklist</h3>
+                <h3 className="text-xs font-black text-primary uppercase tracking-[0.2em]">{t('safetyChecklist', activeLang)}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
                   <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/30 border border-white/5">
-                    <Label htmlFor="fever" className="font-bold">Fever</Label>
+                    <Label htmlFor="fever" className="font-bold">{t('fever', activeLang)}</Label>
                     <Switch id="fever" checked={formData.hasFever} onCheckedChange={(v) => setFormData({...formData, hasFever: v})} />
                   </div>
                   <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/30 border border-white/5">
-                    <Label htmlFor="breathing" className="font-bold">Difficulty Breathing</Label>
+                    <Label htmlFor="breathing" className="font-bold">{t('breathingDifficulty', activeLang)}</Label>
                     <Switch id="breathing" checked={formData.hasBreathingDifficulty} onCheckedChange={(v) => setFormData({...formData, hasBreathingDifficulty: v})} />
                   </div>
                   <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/30 border border-white/5">
-                    <Label htmlFor="chest-pain" className="font-bold">Chest Pain</Label>
+                    <Label htmlFor="chest-pain" className="font-bold">{t('chestPain', activeLang)}</Label>
                     <Switch id="chest-pain" checked={formData.hasChestPain} onCheckedChange={(v) => setFormData({...formData, hasChestPain: v})} />
                   </div>
                   <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/30 border border-white/5">
-                    <Label htmlFor="unconscious" className="font-bold">Fainting / Unconscious</Label>
+                    <Label htmlFor="unconscious" className="font-bold">{t('unconscious', activeLang)}</Label>
                     <Switch id="unconscious" checked={formData.hasUnconscious} onCheckedChange={(v) => setFormData({...formData, hasUnconscious: v})} />
                   </div>
                 </div>
