@@ -1,5 +1,4 @@
-
-import { LayoutDashboard, Stethoscope, MapPin, History, User, AlertCircle, FileHeart, Activity, BarChart3, Presentation } from "lucide-react";
+import { LayoutDashboard, Stethoscope, MapPin, User, AlertCircle, FileHeart, Activity, BarChart3, Presentation } from "lucide-react";
 
 export const navItems = [
   {
@@ -41,11 +40,6 @@ export const navItems = [
     title: "Public Health Trends",
     href: "/public-health",
     icon: BarChart3,
-  },
-  {
-    title: "Unified History",
-    href: "/history",
-    icon: History,
   },
   {
     title: "Profile",

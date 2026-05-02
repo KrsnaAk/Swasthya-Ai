@@ -6,12 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { 
   Stethoscope, 
-  MapPin, 
   FileText, 
   ShieldCheck, 
   ArrowRight,
   Activity,
-  Calendar,
   AlertCircle,
   Loader2,
   Presentation,
@@ -181,26 +179,6 @@ export default function DashboardPage() {
               </Button>
             </CardContent>
           </Card>
-        </div>
-
-        {/* Unified History Link */}
-        <div className="pt-4">
-          <Link href="/history">
-            <div className="p-6 rounded-3xl glass-panel border-primary/20 flex items-center justify-between group cursor-pointer hover:bg-primary/5 transition-colors">
-              <div className="flex items-center gap-6">
-                <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center">
-                  <Calendar className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-lg">Clinical Timeline</h4>
-                  <p className="text-sm text-muted-foreground">View your unified history of triage and SOS alerts.</p>
-                </div>
-              </div>
-              <div className="h-10 w-10 rounded-full border border-border flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-all">
-                <ArrowRight className="h-5 w-5" />
-              </div>
-            </div>
-          </Link>
         </div>
       </div>
     </AppShell>

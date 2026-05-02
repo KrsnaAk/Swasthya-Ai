@@ -326,7 +326,6 @@ export function ChatbotPanel({ onClose }: ChatbotPanelProps) {
     const findHospitalLabels = [t('chatbot_find_hospital', 'en'), t('chatbot_find_hospital', 'hi'), 'Find Emergency Hospital', 'इमरजेंसी अस्पताल खोजें'];
     const emergencyLabels = [t('chatbot_emergency_help', 'en'), t('chatbot_emergency_help', 'hi'), 'Open SOS Panel', 'SOS पैनल खोलें'];
     const summaryLabels = [t('chatbot_generate_summary', 'en'), t('chatbot_generate_summary', 'hi')];
-    const historyLabels = [t('chatbot_view_history', 'en'), t('chatbot_view_history', 'hi')];
 
     if (triageStep !== null) {
       handleTriageFlow(reply);
@@ -335,7 +334,6 @@ export function ChatbotPanel({ onClose }: ChatbotPanelProps) {
       else if (findHospitalLabels.includes(reply)) router.push('/facilities');
       else if (emergencyLabels.includes(reply)) router.push('/sos');
       else if (summaryLabels.includes(reply)) router.push('/records');
-      else if (historyLabels.includes(reply)) router.push('/history');
       else handleGeneralQuery(reply);
     }
   };
@@ -375,7 +373,7 @@ export function ChatbotPanel({ onClose }: ChatbotPanelProps) {
           >
             {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
           </Button>
-          <Button variant="ghost" size="icon" onClick={onClose} className="hover:bg-white/10 rounded-xl h-8 w-8 text-white transition-colors">
+          <Button variant="ghost" size="icon" onClose={onClose} className="hover:bg-white/10 rounded-xl h-8 w-8 text-white transition-colors">
             <X className="h-4 w-4" />
           </Button>
         </div>
@@ -460,3 +458,4 @@ export function ChatbotPanel({ onClose }: ChatbotPanelProps) {
     </div>
   );
 }
+
