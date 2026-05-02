@@ -1,4 +1,4 @@
-import { LayoutDashboard, Stethoscope, MapPin, User, AlertCircle, FileHeart, Activity, BarChart3, Presentation } from "lucide-react";
+import { LayoutDashboard, Stethoscope, MapPin, User, AlertCircle, FileHeart, Activity, BarChart3, Presentation, Microscope } from "lucide-react";
 
 export const navItems = [
   {
@@ -10,6 +10,11 @@ export const navItems = [
     title: "Consultation Mode",
     href: "/consultation",
     icon: Presentation,
+  },
+  {
+    title: "Imaging AI",
+    href: "/imaging",
+    icon: Microscope,
   },
   {
     title: "Emergency SOS",
