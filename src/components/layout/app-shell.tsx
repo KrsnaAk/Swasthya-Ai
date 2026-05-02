@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useMemo } from "react";
@@ -16,7 +17,7 @@ import {
 } from "@/components/ui/sidebar";
 import { navItems } from "./nav-config";
 import { Button } from "@/components/ui/button";
-import { HeartPulse, LogOut, Loader2, User, ShieldAlert } from "lucide-react";
+import { HeartPulse, LogOut, Loader2, User, ShieldAlert, Lock, XCircle, Clock } from "lucide-react";
 import { useAuth, useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { signOut } from "firebase/auth";
 import { ChatbotButton } from "@/components/chatbot/ChatbotButton";
@@ -46,7 +47,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [userRole]);
 
   useEffect(() => {
-    if (!isUserLoading && !user && pathname !== '/login' && pathname !== '/signup' && pathname !== '/forgot-password' && pathname !== '/') {
+    const isPublicPage = ['/login', '/signup', '/forgot-password', '/'].includes(pathname);
+    if (!isUserLoading && !user && !isPublicPage) {
       router.push('/login');
     }
   }, [user, isUserLoading, pathname, router]);
@@ -67,30 +69,56 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isPublicPage = ['/login', '/signup', '/forgot-password', '/'].includes(pathname);
   if (isPublicPage) return <>{children}</>;
 
-  // Doctor Access Guard
-  if (userRole === 'doctor' && verificationStatus !== 'verified' && pathname !== '/dashboard' && pathname !== '/profile') {
+  // --- Strict Role Based Guards ---
+
+  // 1. Admin Guard
+  if (pathname.startsWith('/admin') && userRole !== 'admin') {
     return (
-       <SidebarProvider>
-          <div className="flex min-h-screen w-full">
-            <SidebarInset className="flex-1 flex flex-col items-center justify-center bg-background p-8">
-               <div className="max-w-md w-full text-center space-y-6">
-                  <div className="bg-amber-500/10 p-6 rounded-full w-fit mx-auto animate-pulse">
-                    <ShieldAlert className="h-16 w-16 text-amber-500" />
-                  </div>
-                  <h1 className="text-3xl font-headline font-bold">Verification Pending</h1>
-                  <p className="text-muted-foreground">
-                    Your doctor profile is currently under review by our medical administration team. 
-                    You will gain access to the clinical dashboard once verified.
-                  </p>
-                  <div className="flex gap-4 justify-center">
-                    <Button variant="outline" asChild><NextLink href="/profile">View Profile</NextLink></Button>
-                    <Button onClick={handleSignOut} variant="ghost">Sign Out</Button>
-                  </div>
-               </div>
-            </SidebarInset>
-          </div>
-       </SidebarProvider>
+      <AccessDenied 
+        title="Admin Restricted" 
+        message="This terminal is strictly for clinical administrators only."
+        icon={<Lock className="h-16 w-16 text-destructive" />}
+        onSignOut={handleSignOut}
+      />
     );
+  }
+
+  // 2. Doctor Guard (Clinical Verification Lifecycle)
+  if (pathname.startsWith('/doctor') && pathname !== '/doctor-buddy' && userRole !== 'doctor') {
+    return (
+      <AccessDenied 
+        title="Professional Access Only" 
+        message="This dashboard is reserved for verified medical professionals."
+        icon={<ShieldAlert className="h-16 w-16 text-amber-500" />}
+        onSignOut={handleSignOut}
+      />
+    );
+  }
+
+  // Doctor Verification Screens
+  if (userRole === 'doctor' && (pathname.startsWith('/doctor') || pathname.startsWith('/admin')) && pathname !== '/profile') {
+    if (verificationStatus === 'pending') {
+      return (
+        <AccessDenied 
+          title="Verification Pending" 
+          message="Your clinical credentials are currently under review. Access will be granted once verification is complete."
+          icon={<Clock className="h-16 w-16 text-amber-500 animate-pulse" />}
+          onSignOut={handleSignOut}
+          showProfile
+        />
+      );
+    }
+    if (verificationStatus === 'rejected') {
+      return (
+        <AccessDenied 
+          title="Verification Rejected" 
+          message="Your application was not approved. Please review your profile data and re-upload clinical documents."
+          icon={<XCircle className="h-16 w-16 text-destructive" />}
+          onSignOut={handleSignOut}
+          showProfile
+        />
+      );
+    }
   }
 
   return (
@@ -166,5 +194,38 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </SidebarInset>
       </div>
     </SidebarProvider>
+  );
+}
+
+function AccessDenied({ title, message, icon, onSignOut, showProfile = false }: { 
+  title: string, 
+  message: string, 
+  icon: React.ReactNode, 
+  onSignOut: () => void,
+  showProfile?: boolean 
+}) {
+  return (
+    <div className="min-h-screen w-full flex items-center justify-center bg-background p-8">
+      <div className="max-w-md w-full text-center space-y-6">
+        <div className="bg-muted p-8 rounded-full w-fit mx-auto shadow-2xl">
+          {icon}
+        </div>
+        <h1 className="text-3xl font-headline font-bold">{title}</h1>
+        <p className="text-muted-foreground leading-relaxed">
+          {message}
+        </p>
+        <div className="flex gap-4 justify-center">
+          {showProfile && (
+            <Button variant="outline" className="rounded-xl px-8" asChild>
+              <NextLink href="/profile">Edit Profile</NextLink>
+            </Button>
+          )}
+          <Button variant="ghost" onClick={onSignOut} className="rounded-xl px-8">Sign Out</Button>
+          <Button variant="default" className="rounded-xl px-8 bg-primary" asChild>
+            <NextLink href="/">Home</NextLink>
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }
