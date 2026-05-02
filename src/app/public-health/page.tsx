@@ -31,28 +31,33 @@ import {
   Info,
   MapPin,
   TrendingUp,
-  ArrowUpRight
+  ArrowUpRight,
+  Database
 } from "lucide-react";
 import { useFirestore } from "@/firebase";
 import { fetchPublicHealthTrends, type PublicHealthStats } from "@/lib/public-health-service";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function PublicHealthPage() {
   const db = useFirestore();
   const [stats, setStats] = useState<PublicHealthStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState("7");
 
   useEffect(() => {
     async function loadData() {
       if (!db) return;
       setLoading(true);
+      setError(null);
       try {
         const data = await fetchPublicHealthTrends(db, Number(timeRange));
         setStats(data);
-      } catch (e) {
+      } catch (e: any) {
         console.error("Failed to fetch public health trends", e);
+        setError("Analytics engine connection interrupted. Displaying regional snapshots.");
       } finally {
         setLoading(false);
       }
@@ -60,11 +65,28 @@ export default function PublicHealthPage() {
     loadData();
   }, [db, timeRange]);
 
-  if (loading || !stats) {
+  if (loading) {
     return (
       <AppShell>
         <div className="flex h-[60vh] w-full items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (!stats) {
+    return (
+      <AppShell>
+        <div className="max-w-4xl mx-auto py-20 text-center space-y-6">
+          <div className="bg-destructive/10 p-6 rounded-full w-fit mx-auto">
+            <AlertCircle className="h-12 w-12 text-destructive" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold">Clinical Engine Offline</h2>
+            <p className="text-muted-foreground max-w-md mx-auto">We encountered an issue connecting to the live data stream. Real-time trends are temporarily unavailable.</p>
+          </div>
+          <Button onClick={() => window.location.reload()} className="bg-primary">Retry Connection</Button>
         </div>
       </AppShell>
     );
@@ -85,14 +107,30 @@ export default function PublicHealthPage() {
               Real-time anonymized clinical trends & disease surveillance
             </p>
           </div>
-          <Tabs value={timeRange} onValueChange={setTimeRange} className="w-fit">
-            <TabsList className="bg-muted/50 border border-border">
-              <TabsTrigger value="1" className="text-xs">Today</TabsTrigger>
-              <TabsTrigger value="7" className="text-xs">7 Days</TabsTrigger>
-              <TabsTrigger value="30" className="text-xs">30 Days</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          
+          <div className="flex flex-col items-end gap-2">
+            <Tabs value={timeRange} onValueChange={setTimeRange} className="w-fit">
+              <TabsList className="bg-muted/50 border border-border">
+                <TabsTrigger value="1" className="text-xs">Today</TabsTrigger>
+                <TabsTrigger value="7" className="text-xs">7 Days</TabsTrigger>
+                <TabsTrigger value="30" className="text-xs">30 Days</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            {stats.isFallback && (
+              <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-500 border-amber-500/20 font-black uppercase tracking-widest px-2 py-1">
+                <Database className="h-3 w-3 mr-1" /> Regional Cache Mode
+              </Badge>
+            )}
+          </div>
         </div>
+
+        {error && (
+          <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive border-2">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle className="font-bold">Sync Issue</AlertTitle>
+            <AlertDescription className="text-xs font-medium">{error}</AlertDescription>
+          </Alert>
+        )}
 
         {/* Top Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -258,7 +296,7 @@ export default function PublicHealthPage() {
           <div className="space-y-1">
             <h4 className="font-bold text-primary">Data Privacy & Ethics</h4>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              This dashboard provides high-level epidemiological insights. All individual patient data is strictly anonymized before aggregation. No personal identifiers (names, phone numbers, ABHA IDs) are ever displayed or processed for these public trends.
+              This dashboard provides high-level epidemiological insights. All individual patient data is strictly anonymized before aggregation. No personal identifiers (names, phone numbers, Patient IDs) are ever displayed or processed for these public trends.
             </p>
           </div>
         </div>
