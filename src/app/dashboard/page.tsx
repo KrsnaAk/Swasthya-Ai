@@ -14,7 +14,8 @@ import {
   Activity,
   Calendar,
   AlertCircle,
-  Loader2
+  Loader2,
+  Presentation
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -80,9 +81,9 @@ export default function DashboardPage() {
                   </Link>
                 </Button>
                 <Button asChild size="lg" variant="outline" className="border-primary text-primary hover:bg-primary/10">
-                  <Link href="/facilities" className="flex items-center gap-2">
-                    <MapPin className="h-5 w-5" />
-                    Find Hospitals
+                  <Link href="/consultation" className="flex items-center gap-2">
+                    <Presentation className="h-5 w-5" />
+                    Consultation Mode
                   </Link>
                 </Button>
               </div>
@@ -120,7 +121,7 @@ export default function DashboardPage() {
                 </div>
               </div>
               <Button variant="link" asChild className="p-0 text-primary h-auto group-hover:translate-x-1 transition-transform">
-                <Link href="/history">View History <ArrowRight className="ml-1 h-4 w-4" /></Link>
+                <Link href="/records">View Records <ArrowRight className="ml-1 h-4 w-4" /></Link>
               </Button>
             </CardContent>
           </Card>
@@ -143,8 +144,8 @@ export default function DashboardPage() {
                   />
                 </div>
               )}
-              <Button variant="link" className="p-0 text-primary h-auto group-hover:translate-x-1 transition-transform">
-                View Recommendations <ArrowRight className="ml-1 h-4 w-4" />
+              <Button variant="link" asChild className="p-0 text-primary h-auto group-hover:translate-x-1 transition-transform">
+                <Link href="/preventive">View Recommendations <ArrowRight className="ml-1 h-4 w-4" /></Link>
               </Button>
             </CardContent>
           </Card>

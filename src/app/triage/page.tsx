@@ -30,7 +30,8 @@ import {
   Mic,
   MicOff,
   Languages,
-  FileText
+  FileText,
+  Presentation
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -370,6 +371,9 @@ export default function TriagePage() {
                   </div>
                   <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                     <Button variant="secondary" size="lg" onClick={saveToHistory} className="h-14 font-bold flex-1 sm:flex-none"><History className="mr-2 h-5 w-5" /> Save History</Button>
+                    <Button asChild size="lg" variant="outline" className="h-14 font-bold border-primary text-primary">
+                      <Link href="/consultation"><Presentation className="mr-2 h-5 w-5" /> Consultation Mode</Link>
+                    </Button>
                     {(result.severity === 'RED' || result.severity === 'YELLOW') && (
                       <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground h-14 font-bold flex-1 sm:flex-none">
                         <Link href={`/facilities?type=${result.severity === 'RED' ? 'emergency' : 'all'}`}><MapPin className="mr-2 h-5 w-5" /> {t('findHospital', activeLang)}</Link>

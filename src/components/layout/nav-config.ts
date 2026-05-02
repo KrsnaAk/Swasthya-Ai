@@ -1,11 +1,16 @@
 
-import { LayoutDashboard, Stethoscope, MapPin, History, User, AlertCircle, FileHeart, Activity, BarChart3 } from "lucide-react";
+import { LayoutDashboard, Stethoscope, MapPin, History, User, AlertCircle, FileHeart, Activity, BarChart3, Presentation } from "lucide-react";
 
 export const navItems = [
   {
     title: "Dashboard",
     href: "/dashboard",
     icon: LayoutDashboard,
+  },
+  {
+    title: "Consultation Mode",
+    href: "/consultation",
+    icon: Presentation,
   },
   {
     title: "Emergency SOS",
