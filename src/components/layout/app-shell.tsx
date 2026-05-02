@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useMemo } from "react";
@@ -47,9 +46,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [userRole]);
 
   useEffect(() => {
-    const isPublicPage = ['/login', '/signup', '/forgot-password', '/'].includes(pathname);
+    // PUBLIC ROUTES - No redirect needed
+    const publicPages = ['/login', '/signup', '/forgot-password', '/', '/doctor-auth', '/admin-auth'];
+    const isPublicPage = publicPages.includes(pathname);
+
     if (!isUserLoading && !user && !isPublicPage) {
-      router.push('/login');
+      // SMART REDIRECT - Send to correct auth page based on target area
+      if (pathname.startsWith('/doctor')) {
+        router.push('/doctor-auth');
+      } else if (pathname.startsWith('/admin')) {
+        router.push('/admin-auth');
+      } else {
+        router.push('/login');
+      }
     }
   }, [user, isUserLoading, pathname, router]);
 
@@ -58,7 +67,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     router.push('/login');
   };
 
-  if (isUserLoading || isProfileLoading) {
+  // While checking auth or profile, show loading to prevent UI flickering or unauthorized content flashes
+  if (isUserLoading || (user && isProfileLoading)) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -66,7 +76,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const isPublicPage = ['/login', '/signup', '/forgot-password', '/'].includes(pathname);
+  const isPublicPage = ['/login', '/signup', '/forgot-password', '/', '/doctor-auth', '/admin-auth'].includes(pathname);
   if (isPublicPage) return <>{children}</>;
 
   // --- Strict Role Based Guards ---
@@ -84,7 +94,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   // 2. Doctor Guard (Clinical Verification Lifecycle)
-  if (pathname.startsWith('/doctor') && pathname !== '/doctor-buddy' && userRole !== 'doctor') {
+  if (pathname.startsWith('/doctor') && userRole !== 'doctor') {
     return (
       <AccessDenied 
         title="Professional Access Only" 
@@ -96,7 +106,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   // Doctor Verification Screens
-  if (userRole === 'doctor' && (pathname.startsWith('/doctor') || pathname.startsWith('/admin')) && pathname !== '/profile') {
+  if (userRole === 'doctor' && pathname.startsWith('/doctor') && pathname !== '/profile') {
     if (verificationStatus === 'pending') {
       return (
         <AccessDenied 

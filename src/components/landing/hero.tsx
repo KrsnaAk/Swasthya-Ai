@@ -1,23 +1,40 @@
-
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
-import { useUser } from '@/firebase';
-import { ArrowRight, Stethoscope, Sparkles, ShieldCheck, UserCog } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { Stethoscope, Sparkles, ShieldCheck, UserCog, Loader2 } from 'lucide-react';
 
 export function LandingHero() {
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
+  const db = useFirestore();
   const router = useRouter();
 
-  const handleStartTriage = () => {
-    if (user) {
-      router.push('/dashboard');
-    } else {
-      router.push('/login');
-    }
+  const userDocRef = useMemoFirebase(() => {
+    if (!db || !user?.uid) return null;
+    return doc(db, 'users', user.uid);
+  }, [db, user?.uid]);
+
+  const { data: profile } = useDoc(userDocRef);
+
+  const handleCitizenPortal = () => {
+    if (isUserLoading) return;
+    if (user) router.push('/dashboard');
+    else router.push('/login');
+  };
+
+  const handleDoctorPortal = () => {
+    if (isUserLoading) return;
+    if (user && profile?.role === 'doctor') router.push('/doctor');
+    else router.push('/doctor-auth');
+  };
+
+  const handleAdminPortal = () => {
+    if (isUserLoading) return;
+    if (user && profile?.role === 'admin') router.push('/admin');
+    else router.push('/admin-auth');
   };
 
   return (
@@ -47,40 +64,61 @@ export function LandingHero() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-8 animate-in fade-in slide-in-from-bottom-10 duration-700 delay-300">
             <Button 
               size="lg" 
-              onClick={() => router.push('/dashboard')}
+              onClick={handleCitizenPortal}
+              disabled={isUserLoading}
               className="h-24 flex flex-col items-center justify-center gap-2 text-lg font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_30px_rgba(249,115,22,0.3)] rounded-3xl group"
             >
-              <div className="flex items-center gap-2">
-                <Stethoscope className="h-6 w-6" />
-                Citizen Portal
-              </div>
-              <span className="text-[10px] uppercase tracking-widest opacity-80 font-black">AI Triage & Records</span>
+              {isUserLoading ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <>
+                  <div className="flex items-center gap-2">
+                    <Stethoscope className="h-6 w-6" />
+                    Citizen Portal
+                  </div>
+                  <span className="text-[10px] uppercase tracking-widest opacity-80 font-black">AI Triage & Records</span>
+                </>
+              )}
             </Button>
 
             <Button 
               size="lg" 
               variant="outline"
-              onClick={() => router.push('/doctor')}
+              onClick={handleDoctorPortal}
+              disabled={isUserLoading}
               className="h-24 flex flex-col items-center justify-center gap-2 text-lg font-bold border-white/10 bg-white/5 backdrop-blur-md hover:bg-white/10 rounded-3xl"
             >
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="h-6 w-6 text-primary" />
-                Doctor Dashboard
-              </div>
-              <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-black">Verified Professionals</span>
+              {isUserLoading ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <>
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="h-6 w-6 text-primary" />
+                    Doctor Dashboard
+                  </div>
+                  <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-black">Verified Professionals</span>
+                </>
+              )}
             </Button>
 
             <Button 
               size="lg" 
               variant="ghost"
-              onClick={() => router.push('/admin')}
+              onClick={handleAdminPortal}
+              disabled={isUserLoading}
               className="h-24 flex flex-col items-center justify-center gap-2 text-lg font-bold hover:bg-white/5 rounded-3xl border border-dashed border-white/5"
             >
-              <div className="flex items-center gap-2">
-                <UserCog className="h-6 w-6 text-muted-foreground" />
-                Admin Panel
-              </div>
-              <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-black">Facility Management</span>
+              {isUserLoading ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <>
+                  <div className="flex items-center gap-2">
+                    <UserCog className="h-6 w-6 text-muted-foreground" />
+                    Admin Panel
+                  </div>
+                  <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-black">Facility Management</span>
+                </>
+              )}
             </Button>
           </div>
 

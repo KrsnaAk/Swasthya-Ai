@@ -20,7 +20,7 @@ export function LandingFooter() {
               </span>
             </div>
             <p className="text-muted-foreground max-w-sm leading-relaxed">
-              Agentic AI-powered healthcare traffic controller providing instant triage, multilingual guidance, and smart routing for every citizen.
+              Agentic AI-powered healthcare Assistant providing instant triage, multilingual guidance, and smart routing for every citizen.
             </p>
             <div className="flex gap-4">
               <Link href="#" className="h-10 w-10 rounded-lg bg-white/5 flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
