@@ -269,7 +269,7 @@ function FacilitiesContent() {
                   </div>
                   <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap bg-card/90 backdrop-blur-md px-2 py-0.5 rounded text-[10px] font-bold border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity">
                     {h.name}
-                  </ts>
+                  </div>
                 </div>
               </div>
             ))}
