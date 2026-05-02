@@ -17,8 +17,7 @@ import {
   AlertCircle,
   Siren,
   Crosshair,
-  AlertTriangle,
-  RefreshCcw
+  AlertTriangle
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -68,7 +67,6 @@ function FacilitiesContent() {
   const loadHospitals = async (loc?: {lat: number, lng: number}) => {
     setLoading(true);
     try {
-      // In SOS mode, we always force emergency filter even if activeFilter state hasn't updated yet
       const currentFilter = mode === 'sos' ? 'emergency' : activeFilter;
       const data = await getNearbyHospitals(searchQuery, currentFilter, loc || userLocation || mapCenter, parseInt(radius));
       setHospitals(data);
@@ -100,11 +98,10 @@ function FacilitiesContent() {
         (error) => {
           console.warn("Geolocation error", error);
           setLocationDenied(true);
-          // If we have a map center from a previous search, try to use it
           if (mapCenter.lat !== DEFAULT_CENTER.lat) {
             loadHospitals(mapCenter);
           } else {
-            loadHospitals(); // Load default/mock
+            loadHospitals();
           }
         },
         { timeout: 10000 }
@@ -310,8 +307,8 @@ function FacilitiesContent() {
         
         <div className="absolute top-4 right-4 z-[1000]">
           <div className={cn(
-            "px-3 py-1.5 rounded-full border text-[9px] font-black uppercase tracking-widest shadow-2xl flex items-center gap-2",
-            isLive ? "bg-green-500/10 border-green-500/20 text-green-500" : "bg-amber-500/10 border-amber-500/20 text-amber-500"
+            "px-3 py-1.5 rounded-full border text-[9px] font-black uppercase tracking-widest shadow-xl flex items-center gap-2",
+            isLive ? "bg-green-50 border-green-200 text-green-700" : "bg-amber-50 border-amber-200 text-amber-700"
           )}>
             <div className={cn("h-1.5 w-1.5 rounded-full", isLive ? "bg-green-500 animate-pulse" : "bg-amber-500")} />
             {isLive ? "Live Clinical Data" : "Regional Demo Cache"}
