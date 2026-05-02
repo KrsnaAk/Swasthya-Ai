@@ -6,6 +6,8 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { type Hospital } from '@/lib/hospital-service';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import { Navigation, Phone, MapPin, Building2, User, Activity } from 'lucide-react';
 
 interface FacilityMapProps {
