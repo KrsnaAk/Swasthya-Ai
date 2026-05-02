@@ -108,5 +108,30 @@ service cloud.firestore {
        allow read, list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin() || isHardcodedAdmin());
        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
+
+    // New Rules for the Consultation Feature
+    match /preConsultations/{consultationId} {
+      allow create: if isSignedIn();
+      
+      // Allow access for owners, assigned doctors, and clinical oversight
+      allow get, list: if isSignedIn() && (
+        isAdmin() || 
+        isHardcodedAdmin() || 
+        isVerifiedDoctor() || 
+        resource.data.userId == request.auth.uid || 
+        resource.data.patientId == request.auth.uid
+      );
+      
+      allow update: if isSignedIn() && (
+        isAdmin() || 
+        isHardcodedAdmin() || 
+        isVerifiedDoctor() || 
+        resource.data.userId == request.auth.uid || 
+        resource.data.patientId == request.auth.uid || 
+        resource.data.doctorId == request.auth.uid
+      );
+
+      allow delete: if isHardcodedAdmin() || isAdmin();
+    }
   }
 }
