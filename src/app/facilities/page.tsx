@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, Suspense, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { AppShell } from "@/components/layout/app-shell";
@@ -10,18 +10,15 @@ import { Button } from "@/components/ui/button";
 import { 
   Search, 
   MapPin, 
-  Navigation, 
   Phone, 
   Clock, 
   Star, 
   Loader2, 
-  Filter, 
   AlertCircle,
   Siren,
-  ShieldAlert,
   Crosshair,
-  Building2,
-  Activity
+  AlertTriangle,
+  RefreshCcw
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -46,6 +43,7 @@ function FacilitiesContent() {
   const searchParams = useSearchParams();
   const initialFilter = searchParams.get('type') || 'all';
   const { toast } = useToast();
+  const searchInputRef = useRef<HTMLInputElement>(null);
   
   const [searchQuery, setSearchQuery] = useState("");
   const [mode, setMode] = useState<"sos" | "search">("search");
@@ -56,9 +54,11 @@ function FacilitiesContent() {
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
   const [mapCenter, setMapCenter] = useState<{lat: number, lng: number}>(DEFAULT_CENTER);
   const [isLive, setIsLive] = useState(false);
+  const [locationDenied, setLocationDenied] = useState(false);
 
   useEffect(() => {
     if (mode === 'sos') {
+      setActiveFilter('emergency');
       handleRequestLocation();
     } else {
       loadHospitals();
@@ -68,13 +68,14 @@ function FacilitiesContent() {
   const loadHospitals = async (loc?: {lat: number, lng: number}) => {
     setLoading(true);
     try {
-      const data = await getNearbyHospitals(searchQuery, activeFilter, loc || userLocation, parseInt(radius));
+      // In SOS mode, we always force emergency filter even if activeFilter state hasn't updated yet
+      const currentFilter = mode === 'sos' ? 'emergency' : activeFilter;
+      const data = await getNearbyHospitals(searchQuery, currentFilter, loc || userLocation || mapCenter, parseInt(radius));
       setHospitals(data);
       
-      // If we got real data (usually more than our small mock list)
       setIsLive(data.length > 3 || (searchQuery.length > 0 && data.length > 0));
 
-      if (data.length > 0 && !loc && !userLocation) {
+      if (data.length > 0 && !loc && !userLocation && mapCenter.lat === DEFAULT_CENTER.lat) {
         setMapCenter(data[0].coordinates);
       }
     } catch (e) {
@@ -86,6 +87,7 @@ function FacilitiesContent() {
   };
 
   const handleRequestLocation = () => {
+    setLocationDenied(false);
     if (typeof window !== "undefined" && "geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
@@ -95,17 +97,33 @@ function FacilitiesContent() {
           loadHospitals(loc);
           toast({ title: "Location Active", description: "Showing nearest clinical facilities." });
         },
-        () => {
-          toast({ title: "Location Denied", description: "Please search manually or enable GPS.", variant: "destructive" });
-          setMode("search");
-        }
+        (error) => {
+          console.warn("Geolocation error", error);
+          setLocationDenied(true);
+          // If we have a map center from a previous search, try to use it
+          if (mapCenter.lat !== DEFAULT_CENTER.lat) {
+            loadHospitals(mapCenter);
+          } else {
+            loadHospitals(); // Load default/mock
+          }
+        },
+        { timeout: 10000 }
       );
+    } else {
+      setLocationDenied(true);
+      loadHospitals();
     }
   };
 
   const handleManualSearch = (e: React.FormEvent) => {
     e.preventDefault();
     loadHospitals();
+  };
+
+  const focusSearch = () => {
+    if (searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
   };
 
   const getBadgeVariant = (type: FacilityType) => {
@@ -149,6 +167,7 @@ function FacilitiesContent() {
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input 
+                    ref={searchInputRef}
                     placeholder="Search city, area or hospital..." 
                     className="pl-9 bg-card border-border h-10 text-sm"
                     value={searchQuery}
@@ -160,9 +179,39 @@ function FacilitiesContent() {
                 </Button>
               </form>
             ) : (
-              <Button variant="destructive" className="w-full h-10 font-bold gap-2" onClick={handleRequestLocation}>
-                <Crosshair className="h-4 w-4" /> Use Current Location
-              </Button>
+              <div className="space-y-3">
+                <Button variant="destructive" className="w-full h-10 font-bold gap-2" onClick={handleRequestLocation}>
+                  <Crosshair className="h-4 w-4" /> Use Current Location
+                </Button>
+                
+                {locationDenied && (
+                  <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Location access is off</p>
+                        <p className="text-[10px] text-muted-foreground leading-relaxed">Search your area manually to find emergency centers.</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" className="flex-1 h-8 text-[9px] font-black uppercase bg-card/50" onClick={focusSearch}>Search Manually</Button>
+                      <Button size="sm" className="flex-1 h-8 text-[9px] font-black uppercase bg-amber-500 text-white" onClick={handleRequestLocation}>Try GPS Again</Button>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    ref={searchInputRef}
+                    placeholder="Search city manually..." 
+                    className="pl-9 bg-card border-border h-10 text-sm"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && loadHospitals()}
+                  />
+                </div>
+              </div>
             )}
 
             <div className="grid grid-cols-2 gap-2">
