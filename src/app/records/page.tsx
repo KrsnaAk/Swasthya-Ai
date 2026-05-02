@@ -23,12 +23,13 @@ import {
   Heart,
   Share2
 } from "lucide-react";
-import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
-import { doc, serverTimestamp } from "firebase/firestore";
+import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from "@/firebase";
+import { doc, serverTimestamp, collection, query, orderBy, limit } from "firebase/firestore";
 import { updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { DoctorSummaryDialog } from "@/components/DoctorSummaryDialog";
+import { exportToPDF, exportToJSON, type ExportData } from "@/lib/export-service";
 
 export default function RecordsPage() {
   const { user } = useUser();
@@ -41,7 +42,22 @@ export default function RecordsPage() {
   }, [db, user?.uid]);
 
   const { data: profile, isLoading } = useDoc(userDocRef);
+
+  // Fetch latest triage for export context
+  const triageQuery = useMemoFirebase(() => {
+    if (!db || !user?.uid) return null;
+    return query(
+      collection(db, 'users', user.uid, 'triageAssessments'),
+      orderBy('assessmentDate', 'desc'),
+      limit(1)
+    );
+  }, [db, user?.uid]);
+  const { data: triageRecords } = useCollection(triageQuery);
+
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [isExportingJson, setIsExportingJson] = useState(false);
+
   const [formData, setFormData] = useState<any>({
     abhaId: "",
     bloodGroup: "",
@@ -80,6 +96,48 @@ export default function RecordsPage() {
       title: "Records Updated",
       description: "Your clinical profile has been saved successfully.",
     });
+  };
+
+  const getExportData = (): ExportData => {
+    const latest = triageRecords?.[0];
+    return {
+      patient: {
+        name: profile?.name || "Unknown",
+        age: profile?.age || "N/A",
+        gender: profile?.gender || "N/A",
+        abhaId: formData.abhaId,
+      },
+      records: formData,
+      latestTriage: latest ? {
+        date: new Date(latest.assessmentDate?.toDate?.() || latest.assessmentDate).toLocaleDateString(),
+        symptoms: latest.symptomsInput,
+        severity: latest.assessmentResult,
+      } : null
+    };
+  };
+
+  const handleExportPdf = async () => {
+    setIsExportingPdf(true);
+    try {
+      await exportToPDF(getExportData());
+      toast({ title: "PDF Generated", description: "Your health summary is downloading." });
+    } catch (e) {
+      toast({ variant: "destructive", title: "Export Failed", description: "Could not generate PDF summary." });
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
+  const handleExportJson = () => {
+    setIsExportingJson(true);
+    try {
+      exportToJSON(getExportData());
+      toast({ title: "JSON Generated", description: "FHIR-compatible record is downloading." });
+    } catch (e) {
+      toast({ variant: "destructive", title: "Export Failed", description: "Could not generate JSON export." });
+    } finally {
+      setIsExportingJson(false);
+    }
   };
 
   const syncABHA = async () => {
@@ -255,11 +313,23 @@ export default function RecordsPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-xs text-muted-foreground">Download a clinical summary of your profile to share with your doctor.</p>
-                <Button variant="outline" className="w-full justify-start gap-2 h-12">
-                  <FileText className="h-4 w-4" /> Export as PDF
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start gap-2 h-12"
+                  onClick={handleExportPdf}
+                  disabled={isExportingPdf}
+                >
+                  {isExportingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+                  Export as PDF
                 </Button>
-                <Button variant="outline" className="w-full justify-start gap-2 h-12">
-                  <Database className="h-4 w-4" /> JSON Export (FHIR)
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start gap-2 h-12"
+                  onClick={handleExportJson}
+                  disabled={isExportingJson}
+                >
+                  {isExportingJson ? <Loader2 className="h-4 w-4 animate-spin" /> : <Database className="h-4 w-4" />}
+                  JSON Export (FHIR)
                 </Button>
               </CardContent>
             </Card>
