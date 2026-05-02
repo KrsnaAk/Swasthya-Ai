@@ -73,12 +73,26 @@ async function geocodePlace(query: string): Promise<{ lat: number; lng: number }
     const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`, {
       headers: { 'User-Agent': 'SwasthyaAI/1.0' }
     });
+    
+    // Safety check for non-200 responses
+    if (!res.ok) {
+      console.warn(`Geocoding failed with status: ${res.status}`);
+      return null;
+    }
+
+    // Safety check for non-JSON content to avoid "Unexpected token <" error
+    const contentType = res.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+       console.warn(`Geocoding API returned non-JSON content type: ${contentType}`);
+       return null;
+    }
+
     const data = await res.json();
-    if (data && data.length > 0) {
+    if (data && Array.isArray(data) && data.length > 0) {
       return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
     }
   } catch (e) {
-    console.error("Geocoding failed", e);
+    console.error("Geocoding failed unexpectedly", e);
   }
   return null;
 }
@@ -101,8 +115,26 @@ async function fetchFacilitiesFromOverpass(lat: number, lng: number, radius: num
   
   try {
     const res = await fetch(url);
+    
+    // Safety check for non-200 responses
+    if (!res.ok) {
+      console.warn(`Overpass API failed with status: ${res.status}`);
+      return [];
+    }
+
+    // Safety check for non-JSON content to avoid "Unexpected token <" error
+    const contentType = res.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+       console.warn(`Overpass API returned non-JSON content type: ${contentType}`);
+       return [];
+    }
+
     const data = await res.json();
     
+    if (!data || !data.elements || !Array.isArray(data.elements)) {
+      return [];
+    }
+
     return data.elements.map((el: any): Hospital => {
       const tags = el.tags || {};
       const center = el.center || { lat: el.lat, lon: el.lon };
@@ -128,7 +160,7 @@ async function fetchFacilitiesFromOverpass(lat: number, lng: number, radius: num
       };
     });
   } catch (e) {
-    console.error("Overpass fetch failed", e);
+    console.error("Overpass fetch failed unexpectedly", e);
     return [];
   }
 }
@@ -139,35 +171,39 @@ export async function getNearbyHospitals(
   location?: { lat: number; lng: number } | null,
   radius: number = 5000
 ): Promise<Hospital[]> {
-  let searchLat = location?.lat;
-  let searchLng = location?.lng;
+  try {
+    let searchLat = location?.lat;
+    let searchLng = location?.lng;
 
-  // If we have a text query but no location, geocode first
-  if (query && !location) {
-    const coords = await geocodePlace(query);
-    if (coords) {
-      searchLat = coords.lat;
-      searchLng = coords.lng;
-    }
-  }
-
-  // If we have coordinates (from query geocode or direct location)
-  if (searchLat && searchLng) {
-    const realData = await fetchFacilitiesFromOverpass(searchLat, searchLng, radius);
-    if (realData.length > 0) {
-      // Filter by type if needed
-      if (filterType && filterType !== 'all') {
-        return realData.filter(h => {
-          if (filterType === 'emergency') return h.isEmergencyReady;
-          if (filterType === 'hospital') return h.type.includes('Hospital');
-          if (filterType === 'clinic') return h.type === 'Clinic';
-          if (filterType === 'doctor') return h.type === 'Doctor';
-          if (filterType === 'pharmacy') return h.type === 'Pharmacy';
-          return true;
-        });
+    // If we have a text query but no location, geocode first
+    if (query && !location) {
+      const coords = await geocodePlace(query);
+      if (coords) {
+        searchLat = coords.lat;
+        searchLng = coords.lng;
       }
-      return realData;
     }
+
+    // If we have coordinates (from query geocode or direct location)
+    if (searchLat && searchLng) {
+      const realData = await fetchFacilitiesFromOverpass(searchLat, searchLng, radius);
+      if (realData && realData.length > 0) {
+        // Filter by type if needed
+        if (filterType && filterType !== 'all') {
+          return realData.filter(h => {
+            if (filterType === 'emergency') return h.isEmergencyReady;
+            if (filterType === 'hospital') return h.type.includes('Hospital');
+            if (filterType === 'clinic') return h.type === 'Clinic';
+            if (filterType === 'doctor') return h.type === 'Doctor';
+            if (filterType === 'pharmacy') return h.type === 'Pharmacy';
+            return true;
+          });
+        }
+        return realData;
+      }
+    }
+  } catch (e) {
+    console.error("Error in getNearbyHospitals orchestrator, falling back to mock data", e);
   }
 
   // Fallback to Mock Data if search failed or returned nothing

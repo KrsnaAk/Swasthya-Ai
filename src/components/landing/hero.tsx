@@ -33,8 +33,7 @@ export function LandingHero() {
           {/* Title */}
           <h1 className="text-5xl md:text-7xl font-headline font-black text-white leading-tight animate-in fade-in slide-in-from-bottom-4 duration-700">
             Agentic AI-Powered <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">
-              Healthcare Traffic Controller
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent"> Healthcare Assistant
             </span>
           </h1>
 
