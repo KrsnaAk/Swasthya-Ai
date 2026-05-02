@@ -24,12 +24,13 @@ import {
   ClipboardCheck,
   Briefcase,
   AlertTriangle,
-  LogOut,
-  Lock
+  Lock,
+  Database
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useRouter } from 'next/navigation';
+import { firebaseConfig } from '@/firebase/config';
 
 export default function AdminPage() {
   const db = useFirestore();
@@ -53,7 +54,7 @@ export default function AdminPage() {
     return query(collection(db, 'doctorApplications'), orderBy('submittedAt', 'desc'));
   }, [db]);
 
-  const { data: applications, isLoading } = useCollection(applicationsQuery);
+  const { data: applications, isLoading, error: listError } = useCollection(applicationsQuery);
 
   const handleReview = async (status: 'verified' | 'rejected') => {
     if (!selectedDoctor || !db) return;
@@ -95,8 +96,10 @@ export default function AdminPage() {
     );
   }
 
-  // Double-check real admin status
-  if (profile?.role !== 'admin') {
+  // Double-check real admin status (Firestore role OR hardcoded UID)
+  const isAuthorized = profile?.role === 'admin' || user?.uid === "Zn1wDP2cfzNglUFfGyVQAi64qSk2";
+
+  if (!isAuthorized) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-8">
         <div className="max-w-md w-full text-center space-y-6">
@@ -116,6 +119,28 @@ export default function AdminPage() {
   return (
     <AppShell>
       <div className="max-w-6xl mx-auto space-y-8">
+        {/* Connection Diagnostics Bar */}
+        <div className="p-4 bg-muted/40 border border-white/5 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 text-[10px] font-mono">
+           <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                 <Database className="h-3 w-3 text-primary" />
+                 <span className="text-muted-foreground uppercase font-black">Project:</span> 
+                 <span className="text-primary font-bold">{firebaseConfig.projectId}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                 <ShieldCheck className="h-3 w-3 text-primary" />
+                 <span className="text-muted-foreground uppercase font-black">UID:</span> 
+                 <span className="text-foreground">{user?.uid}</span>
+              </div>
+           </div>
+           {listError && (
+             <div className="flex items-center gap-2 text-destructive font-bold animate-pulse">
+                <AlertTriangle className="h-3 w-3" />
+                <span>PERMISSION ERROR: {listError.message}</span>
+             </div>
+           )}
+        </div>
+
         <div className="flex justify-between items-center">
            <div>
               <h1 className="text-3xl font-headline font-bold">Admin Portal</h1>
@@ -163,7 +188,7 @@ export default function AdminPage() {
                         doc.verificationStatus === 'verified' ? 'default' : 
                         doc.verificationStatus === 'rejected' ? 'destructive' : 'secondary'
                       }>
-                        {doc.verificationStatus.toUpperCase()}
+                        {doc.verificationStatus?.toUpperCase() || 'UNKNOWN'}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
