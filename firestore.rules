@@ -2,6 +2,8 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // --- Helper Functions ---
+
     function isSignedIn() {
       return request.auth != null;
     }
@@ -10,72 +12,75 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
     function isAdmin() {
       return isSignedIn() && 
              exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+             getUserData().role == 'admin';
     }
 
     function isDoctor() {
       return isSignedIn() && 
              exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'doctor';
+             getUserData().role == 'doctor';
     }
 
     function isVerifiedDoctor() {
       return isDoctor() && 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.verificationStatus == 'verified';
+             getUserData().verificationStatus == 'verified';
     }
 
+    // --- Collection Rules ---
+
     match /users/{userId} {
-      // Allow individual read or admin/doctor search
+      // Allow individual read for self, or admin/doctor clinical lookup
       allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin() || isVerifiedDoctor());
-      // Allow listing for search purposes
+      
+      // Allow listing for search purposes only for staff
       allow list: if isSignedIn() && (isAdmin() || isVerifiedDoctor());
       
+      // Self-creation
       allow create: if isSignedIn() && request.auth.uid == userId;
       
-      // Admin can update any user (for verification), owner can update self
+      // Update by self or admin (admin needed for verification/role assignment)
       allow update: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       
       allow delete: if isOwner(userId);
 
+      // Sub-collections for health records
       match /triageAssessments/{triageId} {
-        allow get, list: if isOwner(userId);
-        allow create: if isOwner(userId);
-        allow update: if isOwner(userId);
-        allow delete: if isOwner(userId);
+        allow get, list, create, update, delete: if isOwner(userId);
       }
 
       match /doctorSummaries/{summaryId} {
-        allow get, list: if isOwner(userId);
-        allow create: if isOwner(userId);
-        allow update: if isOwner(userId);
-        allow delete: if isOwner(userId);
+        allow get, list, create, update, delete: if isOwner(userId);
       }
 
       match /preventiveAssessments/{assessmentId} {
-        allow get, list: if isOwner(userId);
-        allow create: if isOwner(userId);
-        allow update: if isOwner(userId);
-        allow delete: if isOwner(userId);
+        allow get, list, create, update, delete: if isOwner(userId);
       }
     }
 
     match /doctorApplications/{appId} {
-      // Admin can see all, doctor can see own
+      // Admin can see all applications, doctors can see their own status
       allow read, list: if isAdmin() || (isSignedIn() && appId == request.auth.uid);
+      
+      // Doctors create their own applications
       allow create: if isSignedIn() && appId == request.auth.uid;
-      // Only admin can approve/reject
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      
+      // Only admins can process applications (update/delete)
+      allow update, delete: if isAdmin();
     }
 
     match /consultationChats/{chatId} {
+      // Access allowed if the user's UID is part of the chatId (sorted combo of IDs)
       allow read, write: if isSignedIn() && (chatId.contains(request.auth.uid));
       
       match /messages/{msgId} {
-        allow read, write: if isSignedIn() && (get(/databases/$(database)/documents/consultationChats/$(chatId)).data.chatId.contains(request.auth.uid));
+        allow read, write: if isSignedIn() && (chatId.contains(request.auth.uid));
       }
     }
 
@@ -88,9 +93,15 @@ service cloud.firestore {
     }
 
     match /medical_imaging_reports/{reportId} {
+      // Access for owner, verified doctor for review, or admin
       allow get, list: if isSignedIn() && (resource.data.userId == request.auth.uid || isVerifiedDoctor() || isAdmin());
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isVerifiedDoctor() || isAdmin());
+    }
+
+    match /chat_triage_records/{recordId} {
+       allow read, list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
   }
 }
