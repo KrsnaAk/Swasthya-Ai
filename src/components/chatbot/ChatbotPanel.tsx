@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -12,17 +13,13 @@ import {
   Send, 
   Mic, 
   MicOff,
-  History, 
-  Building2, 
-  ShieldAlert, 
-  Stethoscope, 
-  FileText,
-  ChevronDown,
   Sparkles,
   AlertCircle,
   Volume2,
   VolumeX,
-  Languages
+  Languages,
+  ShieldCheck,
+  Activity
 } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, collection, serverTimestamp } from 'firebase/firestore';
@@ -80,8 +77,8 @@ export function ChatbotPanel({ onClose }: ChatbotPanelProps) {
 
   useEffect(() => {
     const welcomeMsg = activeLang === 'hi' 
-      ? `नमस्ते! मैं आपका SwasthyaAI स्वास्थ्य सहायक हूँ। मैं आपकी कैसे मदद कर सकता हूँ?`
-      : `Hello! I'm your SwasthyaAI Healthcare Assistant. How can I help you today?`;
+      ? `नमस्ते! मैं आपका SwasthyaAI क्लिनिकल असिस्टेंट हूँ। मैं आज आपकी कैसे सहायता कर सकता हूँ?`
+      : `Hello! I'm your SwasthyaAI Clinical Assistant. How can I assist you with your health today?`;
     
     setMessages([
       { 
@@ -211,7 +208,7 @@ export function ChatbotPanel({ onClose }: ChatbotPanelProps) {
         if (yesLabels.includes(input.toLowerCase())) {
           await performTriageAnalysis({ ...session } as ChatTriageSession);
         } else {
-          botReply(activeLang === 'hi' ? "ठीक है, मैं रुक जाता हूँ।" : "Understood, analysis cancelled.");
+          botReply(activeLang === 'hi' ? "समझ गया, विश्लेषण रद्द कर दिया गया।" : "Understood, analysis cancelled.");
         }
         break;
     }
@@ -306,8 +303,8 @@ export function ChatbotPanel({ onClose }: ChatbotPanelProps) {
       triggerEmergencyHelp();
     } else {
       botReply(activeLang === 'hi' 
-        ? "मैं स्वास्थ्य सेवा नेविगेशन में मदद करने के लिए प्रशिक्षित हूँ। क्या आप लक्षण जांच शुरू करना चाहेंगे या पास के अस्पताल को खोजना चाहेंगे?"
-        : "I'm trained to help with healthcare navigation. Would you like to start a symptom check or find a nearby hospital?");
+        ? "मैं स्वास्थ्य सेवा नेविगेशन में सहायता के लिए प्रशिक्षित हूँ। क्या आप लक्षण जांच शुरू करना चाहेंगे या पास के अस्पताल को खोजना चाहेंगे?"
+        : "I'm trained to assist with healthcare navigation. Would you like to start a symptom check or find a nearby hospital?");
     }
   };
 
@@ -344,24 +341,24 @@ export function ChatbotPanel({ onClose }: ChatbotPanelProps) {
   };
 
   return (
-    <div className="fixed bottom-24 right-6 w-[400px] h-[600px] max-h-[80vh] flex flex-col bg-card border border-border shadow-2xl rounded-3xl overflow-hidden z-50 animate-in slide-in-from-bottom-4 duration-300">
+    <div className="fixed bottom-24 right-6 w-[420px] h-[640px] max-h-[85vh] flex flex-col glass-panel rounded-[2rem] overflow-hidden z-50 animate-in slide-in-from-bottom-6 duration-500 shadow-[0_32px_64px_rgba(0,0,0,0.5)] border-white/10">
       {/* Header */}
-      <div className="bg-primary p-4 flex items-center justify-between text-primary-foreground shadow-lg">
-        <div className="flex items-center gap-3">
-          <div className="bg-white/20 p-2 rounded-xl">
+      <div className="bg-primary p-5 flex items-center justify-between text-primary-foreground shadow-xl relative z-10">
+        <div className="flex items-center gap-4">
+          <div className="bg-white/20 p-2.5 rounded-2xl heartbeat shadow-inner">
             <Sparkles className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="font-headline font-bold text-sm leading-tight">{t('chatbot_title', activeLang)}</h3>
-            <div className="flex items-center gap-2 mt-0.5">
-              <Sparkles className="h-2 w-2 opacity-80" />
-              <span className="text-[10px] font-medium opacity-80 uppercase tracking-tighter">Bilingual AI</span>
+            <h3 className="font-headline font-bold text-base leading-tight tracking-tight">{t('chatbot_title', activeLang)}</h3>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-accent-foreground/50 animate-pulse" />
+              <span className="text-[10px] font-black opacity-80 uppercase tracking-widest">Medical Assistant v2</span>
             </div>
           </div>
         </div>
         <div className="flex items-center gap-1">
           <Select value={activeLang} onValueChange={(v: any) => setActiveLang(v)}>
-            <SelectTrigger className="w-[85px] bg-white/10 border-none h-7 text-[10px] text-white focus:ring-0">
+            <SelectTrigger className="w-[85px] bg-white/10 border-none h-8 text-[10px] font-bold text-white focus:ring-0 rounded-xl">
               <Languages className="h-3 w-3 mr-1" />
               <SelectValue />
             </SelectTrigger>
@@ -374,35 +371,35 @@ export function ChatbotPanel({ onClose }: ChatbotPanelProps) {
             variant="ghost" 
             size="icon" 
             onClick={() => setIsMuted(!isMuted)} 
-            className="hover:bg-white/10 rounded-full h-8 w-8 text-white"
+            className="hover:bg-white/10 rounded-xl h-8 w-8 text-white transition-colors"
           >
             {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
           </Button>
-          <Button variant="ghost" size="icon" onClick={onClose} className="hover:bg-white/10 rounded-full h-8 w-8 text-white">
+          <Button variant="ghost" size="icon" onClick={onClose} className="hover:bg-white/10 rounded-xl h-8 w-8 text-white transition-colors">
             <X className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
       {/* Warning Bar */}
-      <div className="bg-destructive/10 border-b border-destructive/20 p-2 text-[10px] text-destructive font-bold text-center uppercase tracking-widest flex items-center justify-center gap-2">
-        <AlertCircle className="h-3 w-3" /> {activeLang === 'hi' ? "मेडिकल डायग्नोसिस के लिए नहीं" : "NOT FOR MEDICAL DIAGNOSIS"}
+      <div className="bg-destructive/10 border-b border-white/5 p-2 text-[9px] text-destructive font-black text-center uppercase tracking-[0.2em] flex items-center justify-center gap-2">
+        <ShieldCheck className="h-3 w-3" /> Secure AI Assessment • Not for Diagnosis
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-        <div className="space-y-2">
+      <ScrollArea className="flex-1 p-6 bg-gradient-to-b from-transparent to-primary/5" ref={scrollRef}>
+        <div className="space-y-4">
           {messages.map(m => (
             <div key={m.id}>
               <ChatMessageBubble message={m} language={activeLang} />
               {m.type === 'quick_reply' && (
-                <div className="flex flex-wrap gap-2 mb-4 ml-11">
+                <div className="flex flex-wrap gap-2 mb-6 ml-12">
                   {m.data.map((reply: string) => (
                     <Button 
                       key={reply} 
                       variant="outline" 
                       size="sm" 
-                      className="rounded-full bg-background border-primary/20 text-primary text-xs hover:bg-primary/10"
+                      className="rounded-xl bg-background/50 border-primary/30 text-primary text-xs font-bold hover:bg-primary/10 hover:border-primary transition-all shadow-sm px-4 h-9"
                       onClick={() => handleQuickReply(reply)}
                     >
                       {reply}
@@ -418,7 +415,7 @@ export function ChatbotPanel({ onClose }: ChatbotPanelProps) {
 
       {/* Quick Replies Footer */}
       {triageStep === null && (
-        <div className="px-4 py-2 flex gap-2 overflow-x-auto border-t border-border/50 bg-muted/20 no-scrollbar">
+        <div className="px-6 py-3 flex gap-3 overflow-x-auto border-t border-white/5 bg-muted/20 no-scrollbar">
           {[
             t('chatbot_start_triage', activeLang), 
             t('chatbot_find_hospital', activeLang), 
@@ -427,7 +424,7 @@ export function ChatbotPanel({ onClose }: ChatbotPanelProps) {
             <button 
               key={label}
               onClick={() => handleQuickReply(label)}
-              className="whitespace-nowrap px-3 py-1.5 rounded-full bg-card border border-border text-[11px] font-bold text-muted-foreground hover:border-primary hover:text-primary transition-colors shadow-sm"
+              className="whitespace-nowrap px-4 py-2 rounded-xl bg-card/80 border border-white/10 text-[11px] font-black text-muted-foreground uppercase tracking-widest hover:border-primary hover:text-primary transition-all shadow-lg active:scale-95"
             >
               {label}
             </button>
@@ -436,25 +433,25 @@ export function ChatbotPanel({ onClose }: ChatbotPanelProps) {
       )}
 
       {/* Input Area */}
-      <div className="p-4 bg-background border-t border-border flex items-center gap-2">
+      <div className="p-5 bg-background/80 backdrop-blur-xl border-t border-white/5 flex items-center gap-3">
         <Button 
           variant={isListening ? "destructive" : "ghost"} 
           size="icon" 
-          className={cn("shrink-0", isListening ? "animate-pulse" : "text-muted-foreground hover:text-primary")}
+          className={cn("shrink-0 h-12 w-12 rounded-2xl transition-all", isListening ? "animate-pulse" : "text-muted-foreground hover:bg-primary/10 hover:text-primary")}
           onClick={isListening ? stopListening : startListening}
         >
-          {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+          {isListening ? <MicOff className="h-6 w-6" /> : <Mic className="h-6 w-6" />}
         </Button>
         <Input 
           placeholder={t('chatbot_input_placeholder', activeLang)} 
-          className="bg-muted/50 border-none focus-visible:ring-1 focus-visible:ring-primary h-11 text-sm rounded-xl"
+          className="bg-muted/50 border-none focus-visible:ring-1 focus-visible:ring-primary h-12 text-sm rounded-2xl px-5"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSend()}
         />
         <Button 
           size="icon" 
-          className="shrink-0 bg-primary text-primary-foreground rounded-xl h-11 w-11 shadow-lg shadow-primary/20"
+          className="shrink-0 bg-primary text-primary-foreground rounded-2xl h-12 w-12 shadow-xl shadow-primary/20 hover:scale-105 transition-transform"
           onClick={() => handleSend()}
         >
           <Send className="h-5 w-5" />

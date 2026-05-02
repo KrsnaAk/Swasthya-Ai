@@ -5,26 +5,27 @@
 
 @layer base {
   :root {
-    --background: 40 11% 10%;
-    --foreground: 40 10% 98%;
-    --card: 40 11% 12%;
-    --card-foreground: 40 10% 98%;
-    --popover: 40 11% 10%;
-    --popover-foreground: 40 10% 98%;
-    --primary: 38 88% 54%;
-    --primary-foreground: 40 10% 10%;
-    --secondary: 40 11% 20%;
-    --secondary-foreground: 40 10% 98%;
-    --muted: 40 11% 15%;
-    --muted-foreground: 40 10% 65%;
-    --accent: 3 58% 48%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 40 11% 18%;
-    --input: 40 11% 18%;
-    --ring: 38 88% 54%;
-    --radius: 0.75rem;
+    /* Medical Dark Navy & Teal Theme */
+    --background: 215 50% 6%;
+    --foreground: 210 20% 98%;
+    --card: 215 40% 9%;
+    --card-foreground: 210 20% 98%;
+    --popover: 215 50% 6%;
+    --popover-foreground: 210 20% 98%;
+    --primary: 185 85% 38%; /* Deep Medical Teal */
+    --primary-foreground: 185 10% 10%;
+    --secondary: 215 25% 15%;
+    --secondary-foreground: 210 20% 98%;
+    --muted: 215 25% 12%;
+    --muted-foreground: 215 15% 65%;
+    --accent: 190 90% 45%; /* Medical Cyan */
+    --accent-foreground: 210 20% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 215 25% 16%;
+    --input: 215 25% 16%;
+    --ring: 185 85% 38%;
+    --radius: 1rem;
   }
 }
 
@@ -34,8 +35,39 @@
   }
   body {
     @apply bg-background text-foreground font-body;
+    background-image: radial-gradient(circle at 50% -20%, hsl(var(--primary) / 0.1) 0%, transparent 50%),
+                      radial-gradient(circle at 0% 100%, hsl(var(--accent) / 0.05) 0%, transparent 40%);
+    background-attachment: fixed;
   }
   h1, h2, h3, h4, h5, h6 {
-    @apply font-headline;
+    @apply font-headline tracking-tight;
   }
+}
+
+.glass-panel {
+  @apply bg-card/60 backdrop-blur-xl border border-white/5 shadow-2xl;
+}
+
+.medical-gradient-text {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent;
+}
+
+.heartbeat {
+  animation: heartbeat 1.5s ease-in-out infinite;
+}
+
+@keyframes heartbeat {
+  0% { transform: scale(1); }
+  14% { transform: scale(1.1); }
+  28% { transform: scale(1); }
+  42% { transform: scale(1.1); }
+  70% { transform: scale(1); }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

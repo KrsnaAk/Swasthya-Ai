@@ -15,7 +15,8 @@ import {
   Calendar,
   AlertCircle,
   Loader2,
-  Presentation
+  Presentation,
+  HeartPulse
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -35,7 +36,6 @@ export default function DashboardPage() {
   const { data: profile, isLoading: isProfileLoading } = useDoc(userDocRef);
 
   const heroImage = PlaceHolderImages.find(img => img.id === 'hero-bg');
-  const preventiveImage = PlaceHolderImages.find(img => img.id === 'health-checkup');
 
   if (isUserLoading || isProfileLoading) {
     return (
@@ -53,8 +53,8 @@ export default function DashboardPage() {
     <AppShell>
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Welcome Section */}
-        <div className="relative overflow-hidden rounded-2xl bg-card border border-border group">
-          <div className="absolute inset-0 opacity-10 group-hover:opacity-15 transition-opacity">
+        <div className="relative overflow-hidden rounded-3xl bg-card border border-primary/10 group shadow-2xl">
+          <div className="absolute inset-0 opacity-[0.03] group-hover:opacity-[0.05] transition-opacity">
             {heroImage && (
               <Image 
                 src={heroImage.imageUrl} 
@@ -65,22 +65,30 @@ export default function DashboardPage() {
               />
             )}
           </div>
+          <div className="absolute top-0 right-0 p-8 opacity-20 pointer-events-none">
+            <HeartPulse className="h-48 w-48 text-primary heartbeat" />
+          </div>
+          
           <div className="relative p-8 md:p-12 flex flex-col md:flex-row justify-between items-center gap-8">
-            <div className="space-y-4 max-w-xl">
-              <h1 className="text-3xl md:text-4xl font-headline font-bold text-foreground">
-                Welcome back, <span className="text-primary">{displayName}</span>
+            <div className="space-y-6 max-w-xl text-center md:text-left">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-widest">
+                <Activity className="h-3 w-3" />
+                Your AI Healthcare Hub
+              </div>
+              <h1 className="text-3xl md:text-5xl font-headline font-bold text-foreground leading-tight">
+                Welcome back, <span className="medical-gradient-text">{displayName}</span>
               </h1>
-              <p className="text-muted-foreground text-lg">
-                Your health insights and healthcare navigator are ready. Start a triage or find nearby facilities.
+              <p className="text-muted-foreground text-lg leading-relaxed">
+                Analyze your symptoms instantly or find clinical care near you with our intelligent healthcare navigator.
               </p>
-              <div className="flex flex-wrap gap-4 pt-2">
-                <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
+              <div className="flex flex-wrap gap-4 pt-2 justify-center md:justify-start">
+                <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-2xl px-8 shadow-xl shadow-primary/20">
                   <Link href="/triage" className="flex items-center gap-2">
                     <Stethoscope className="h-5 w-5" />
                     Start AI Triage
                   </Link>
                 </Button>
-                <Button asChild size="lg" variant="outline" className="border-primary text-primary hover:bg-primary/10">
+                <Button asChild size="lg" variant="outline" className="border-primary/30 hover:bg-primary/5 rounded-2xl px-8">
                   <Link href="/consultation" className="flex items-center gap-2">
                     <Presentation className="h-5 w-5" />
                     Consultation Mode
@@ -88,17 +96,17 @@ export default function DashboardPage() {
                 </Button>
               </div>
             </div>
-            <div className="hidden lg:block">
-              <div className="bg-background/40 backdrop-blur-xl border border-white/10 p-6 rounded-2xl shadow-2xl">
+            <div className="hidden lg:block w-72">
+              <div className="glass-panel p-6 rounded-3xl border-primary/20">
                 <div className="flex items-center gap-4 mb-4">
-                  <div className="bg-accent rounded-full p-2">
-                    <AlertCircle className="h-5 w-5 text-accent-foreground" />
+                  <div className="bg-destructive/10 rounded-2xl p-2.5">
+                    <AlertCircle className="h-6 w-6 text-destructive" />
                   </div>
-                  <span className="font-headline font-semibold text-accent">Quick SOS</span>
+                  <span className="font-headline font-bold text-destructive">Quick SOS</span>
                 </div>
-                <p className="text-sm text-muted-foreground mb-4 leading-relaxed">Broadcast an emergency alert to your contact and services.</p>
-                <Button variant="destructive" asChild className="w-full font-bold h-12">
-                  <Link href="/sos">OPEN SOS PANEL</Link>
+                <p className="text-xs text-muted-foreground mb-6 leading-relaxed">Broadcast an emergency alert to your contact and clinical services.</p>
+                <Button variant="destructive" asChild className="w-full font-bold h-12 rounded-xl shadow-lg shadow-destructive/20">
+                  <Link href="/sos">ACTIVATE SOS</Link>
                 </Button>
               </div>
             </div>
@@ -107,95 +115,93 @@ export default function DashboardPage() {
 
         {/* Action Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Card className="hover:border-primary/50 transition-all hover:shadow-lg group">
-            <CardHeader>
-              <FileText className="h-8 w-8 text-primary mb-2 group-hover:scale-110 transition-transform" />
-              <CardTitle>Health Records (ABHA)</CardTitle>
-              <CardDescription>Securely access and manage your medical history digitally.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-32 rounded-lg bg-muted flex items-center justify-center border border-dashed border-border mb-4">
-                <div className="text-center p-4">
-                  <span className="text-xs text-muted-foreground block mb-2">ABHA: {profile?.abhaId || 'Not Linked'}</span>
-                  {!profile?.abhaId && <Button variant="outline" size="sm" asChild><Link href="/profile">Link Now</Link></Button>}
-                </div>
+          <Card className="hover:border-primary/40 transition-all hover:shadow-2xl group border-white/5 bg-card/50 backdrop-blur-sm rounded-3xl">
+            <CardHeader className="p-8 pb-4">
+              <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <FileText className="h-7 w-7 text-primary" />
               </div>
-              <Button variant="link" asChild className="p-0 text-primary h-auto group-hover:translate-x-1 transition-transform">
-                <Link href="/records">View Records <ArrowRight className="ml-1 h-4 w-4" /></Link>
+              <CardTitle className="text-xl">Health Records</CardTitle>
+              <CardDescription className="text-sm">Secure clinical profile & ABHA history.</CardDescription>
+            </CardHeader>
+            <CardContent className="px-8 pb-8">
+              <div className="p-4 rounded-2xl bg-muted/40 border border-border/50 mb-6">
+                 <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Current ID</p>
+                 <p className="text-sm font-mono truncate">{profile?.abhaId || 'Not Linked'}</p>
+              </div>
+              <Button variant="link" asChild className="p-0 text-primary font-bold group-hover:translate-x-1 transition-transform">
+                <Link href="/records">Manage Records <ArrowRight className="ml-1 h-4 w-4" /></Link>
               </Button>
             </CardContent>
           </Card>
 
-          <Card className="hover:border-primary/50 transition-all hover:shadow-lg group">
-            <CardHeader>
-              <ShieldCheck className="h-8 w-8 text-primary mb-2 group-hover:scale-110 transition-transform" />
-              <CardTitle>Preventive Health</CardTitle>
-              <CardDescription>Personalized tips based on your age ({profile?.age || '??'}) and profile.</CardDescription>
+          <Card className="hover:border-accent/40 transition-all hover:shadow-2xl group border-white/5 bg-card/50 backdrop-blur-sm rounded-3xl">
+            <CardHeader className="p-8 pb-4">
+              <div className="h-14 w-14 rounded-2xl bg-accent/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <ShieldCheck className="h-7 w-7 text-accent" />
+              </div>
+              <CardTitle className="text-xl">Preventive Analytics</CardTitle>
+              <CardDescription className="text-sm">Personalized lifestyle risk insights.</CardDescription>
             </CardHeader>
-            <CardContent>
-              {preventiveImage && (
-                <div className="relative h-32 w-full rounded-lg overflow-hidden mb-4">
-                   <Image 
-                    src={preventiveImage.imageUrl} 
-                    alt={preventiveImage.description} 
-                    fill 
-                    className="object-cover"
-                    data-ai-hint={preventiveImage.imageHint}
-                  />
+            <CardContent className="px-8 pb-8">
+              <div className="space-y-4 mb-6">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-muted-foreground">Wellness Score</span>
+                  <span className="text-xs font-bold text-accent">Optimized</span>
                 </div>
-              )}
-              <Button variant="link" asChild className="p-0 text-primary h-auto group-hover:translate-x-1 transition-transform">
-                <Link href="/preventive">View Recommendations <ArrowRight className="ml-1 h-4 w-4" /></Link>
+                <div className="h-1.5 w-full bg-accent/10 rounded-full overflow-hidden">
+                  <div className="h-full bg-accent w-[75%] rounded-full" />
+                </div>
+              </div>
+              <Button variant="link" asChild className="p-0 text-accent font-bold group-hover:translate-x-1 transition-transform">
+                <Link href="/preventive">Run Analysis <ArrowRight className="ml-1 h-4 w-4" /></Link>
               </Button>
             </CardContent>
           </Card>
 
-          <Card className="hover:border-primary/50 transition-all hover:shadow-lg group">
-            <CardHeader>
-              <Activity className="h-8 w-8 text-primary mb-2 group-hover:scale-110 transition-transform" />
-              <CardTitle>Recent Vital Stats</CardTitle>
-              <CardDescription>Track your fitness and health metrics.</CardDescription>
+          <Card className="hover:border-primary/40 transition-all hover:shadow-2xl group border-white/5 bg-card/50 backdrop-blur-sm rounded-3xl">
+            <CardHeader className="p-8 pb-4">
+              <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <Activity className="h-7 w-7 text-primary" />
+              </div>
+              <CardTitle className="text-xl">Vital Stats</CardTitle>
+              <CardDescription className="text-sm">Latest clinical measurements.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between items-center text-sm border-b border-border pb-2">
-                <span className="text-muted-foreground">Heart Rate</span>
-                <span className="font-semibold text-primary">72 bpm</span>
+            <CardContent className="px-8 pb-8">
+              <div className="space-y-3 mb-6">
+                <div className="flex justify-between items-center py-2 border-b border-border/50">
+                  <span className="text-xs text-muted-foreground">Blood Pressure</span>
+                  <span className="text-sm font-bold">120/80</span>
+                </div>
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-xs text-muted-foreground">Heart Rate</span>
+                  <span className="text-sm font-bold">72 bpm</span>
+                </div>
               </div>
-              <div className="flex justify-between items-center text-sm border-b border-border pb-2">
-                <span className="text-muted-foreground">Blood Pressure</span>
-                <span className="font-semibold text-primary">120/80 mmHg</span>
-              </div>
-              <Button variant="link" className="p-0 text-primary h-auto group-hover:translate-x-1 transition-transform">
-                View All Stats <ArrowRight className="ml-1 h-4 w-4" />
+              <Button variant="link" className="p-0 text-primary font-bold group-hover:translate-x-1 transition-transform">
+                All Vitals <ArrowRight className="ml-1 h-4 w-4" />
               </Button>
             </CardContent>
           </Card>
         </div>
 
-        {/* History Preview */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-headline font-semibold">Triage History</h3>
-            <Button variant="ghost" asChild>
-              <Link href="/history">View All</Link>
-            </Button>
-          </div>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-4 rounded-xl bg-card border border-border hover:border-primary/30 transition-colors">
-              <div className="flex items-center gap-4">
-                <div className="bg-secondary p-3 rounded-full">
-                  <Calendar className="h-5 w-5 text-muted-foreground" />
+        {/* Unified History Link */}
+        <div className="pt-4">
+          <Link href="/history">
+            <div className="p-6 rounded-3xl glass-panel border-primary/20 flex items-center justify-between group cursor-pointer hover:bg-primary/5 transition-colors">
+              <div className="flex items-center gap-6">
+                <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+                  <Calendar className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <p className="font-medium">Recent Triage Assessment</p>
-                  <p className="text-xs text-muted-foreground">View your stored clinical evaluations here.</p>
+                  <h4 className="font-bold text-lg">Clinical Timeline</h4>
+                  <p className="text-sm text-muted-foreground">View your unified history of triage and SOS alerts.</p>
                 </div>
               </div>
-              <Button variant="ghost" size="icon" asChild>
-                <Link href="/history"><ArrowRight className="h-4 w-4" /></Link>
-              </Button>
+              <div className="h-10 w-10 rounded-full border border-border flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+                <ArrowRight className="h-5 w-5" />
+              </div>
             </div>
-          </div>
+          </Link>
         </div>
       </div>
     </AppShell>
