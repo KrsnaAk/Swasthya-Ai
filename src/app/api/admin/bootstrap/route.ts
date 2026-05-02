@@ -37,6 +37,11 @@ export async function POST(request: Request) {
           emailVerified: true,
         });
         console.log('New Admin user created in Auth');
+      } else if (e.code === 'auth/insufficient-permission') {
+         return NextResponse.json({ 
+           error: 'Insufficient Permission: Service account lacks Auth access.',
+           instructions: 'Ensure service account has "Firebase Authentication Admin" and "Firebase Admin" roles.'
+         }, { status: 500 });
       } else {
         throw e;
       }
@@ -45,18 +50,29 @@ export async function POST(request: Request) {
     const uid = userRecord.uid;
 
     // 3. Set Role in Firestore
-    const userDocRef = adminDb.collection('users').doc(uid);
-    const userSnapshot = await userDocRef.get();
+    try {
+      const userDocRef = adminDb.collection('users').doc(uid);
+      const userSnapshot = await userDocRef.get();
 
-    await userDocRef.set({
-      uid,
-      email,
-      name,
-      role: 'admin',
-      updatedAt: new Date(),
-      createdAt: userSnapshot.exists ? (userSnapshot.data()?.createdAt || new Date()) : new Date(),
-      adminCreatedBy: 'bootstrap'
-    }, { merge: true });
+      await userDocRef.set({
+        uid,
+        email,
+        name,
+        role: 'admin',
+        updatedAt: new Date(),
+        createdAt: userSnapshot.exists ? (userSnapshot.data()?.createdAt || new Date()) : new Date(),
+        adminCreatedBy: 'bootstrap'
+      }, { merge: true });
+    } catch (fsError: any) {
+      if (fsError.code === 7 || fsError.message.includes('permission')) {
+        return NextResponse.json({ 
+          error: 'Insufficient Permission: Service account lacks Firestore access.',
+          details: fsError.message,
+          instructions: 'Ensure service account has "Cloud Datastore User" or "Firebase Admin" roles in Google Cloud Console.'
+        }, { status: 500 });
+      }
+      throw fsError;
+    }
 
     return NextResponse.json({
       success: true,
