@@ -109,7 +109,7 @@ export default function AdminPage() {
         toast({ title: `Doctor ${status}`, description: `Action applied to ${selectedDoctor.name}` });
         setSelectedDoctor(null);
         setRejectionReason('');
-        fetchApplications(); // Refresh list
+        fetchApplications();
       } else {
         toast({ variant: 'destructive', title: "Error", description: data.error || "Could not update status." });
       }
@@ -130,7 +130,6 @@ export default function AdminPage() {
     );
   }
 
-  // Final access check
   const isAuthorized = profile?.role === 'admin' || user?.uid === "Zn1wDP2cfzNglUFfGyVQAi64qSk2";
 
   if (!isAuthorized) {
@@ -153,7 +152,6 @@ export default function AdminPage() {
   return (
     <AppShell>
       <div className="max-w-6xl mx-auto space-y-8">
-        {/* Connection Diagnostics Bar */}
         <div className="p-4 bg-muted/40 border border-white/5 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 text-[10px] font-mono">
            <div className="flex items-center gap-6">
               <div className="flex items-center gap-2">
@@ -178,7 +176,7 @@ export default function AdminPage() {
         <div className="flex justify-between items-center">
            <div>
               <h1 className="text-3xl font-headline font-bold">Admin Portal</h1>
-              <p className="text-muted-foreground">Manage healthcare professional verifications via privileged backend API.</p>
+              <p className="text-muted-foreground">Manage healthcare professional verifications.</p>
            </div>
            <div className="flex gap-4">
               <Button variant="outline" size="sm" onClick={fetchApplications} disabled={isLoading}>
@@ -195,7 +193,7 @@ export default function AdminPage() {
         <Card className="border-border bg-card">
           <CardHeader>
             <CardTitle>Professional Applications</CardTitle>
-            <CardDescription>Review clinical credentials and medical licenses fetched from secure cloud records.</CardDescription>
+            <CardDescription>Review clinical credentials and medical licenses.</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
@@ -224,9 +222,14 @@ export default function AdminPage() {
                       <TableCell>{doc.specialization}</TableCell>
                       <TableCell className="font-mono text-xs text-primary">{doc.licenseNumber || doc.medicalLicenseNumber}</TableCell>
                       <TableCell>
-                        <div className="flex gap-2">
-                          {(doc.degreeUrl || doc.degreeFileName) && <Badge variant="outline" className="text-[9px] bg-primary/5">Degree</Badge>}
-                          {(doc.licenseUrl || doc.licenseProof) && <Badge variant="outline" className="text-[9px] bg-primary/5">License</Badge>}
+                        <div className="flex flex-col gap-1">
+                          <div className="flex gap-2">
+                            {(doc.degreeUrl || doc.degreeFileName) && <Badge variant="outline" className="text-[9px] bg-primary/5">Degree</Badge>}
+                            {(doc.licenseUrl || doc.licenseFileName) && <Badge variant="outline" className="text-[9px] bg-primary/5">License</Badge>}
+                          </div>
+                          {doc.documentUploadStatus === 'pending_storage_setup' && (
+                            <span className="text-[8px] text-amber-500 font-bold uppercase tracking-tighter">Storage Pending</span>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -262,7 +265,7 @@ export default function AdminPage() {
               <DialogTitle className="flex items-center gap-2 text-xl">
                 <ShieldCheck className="h-6 w-6 text-primary" /> Professional Credential Audit
               </DialogTitle>
-              <DialogDescription>Verify the identity and clinical authority of this professional against backend proofs.</DialogDescription>
+              <DialogDescription>Verify the identity and clinical authority of this professional.</DialogDescription>
             </DialogHeader>
             
             {selectedDoctor && (
@@ -319,7 +322,22 @@ export default function AdminPage() {
                            </a>
                          </Button>
                        )}
-                       {(!selectedDoctor.degreeUrl && !selectedDoctor.licenseUrl) && (
+                       {selectedDoctor.documentUploadStatus === 'pending_storage_setup' && (
+                         <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl space-y-2">
+                           <div className="flex items-center gap-2 text-amber-500">
+                             <AlertTriangle className="h-4 w-4" />
+                             <p className="text-[10px] font-black uppercase">Upload Pending</p>
+                           </div>
+                           <p className="text-[10px] text-muted-foreground leading-tight">
+                             The following files were selected but couldn't be uploaded (Storage not configured):
+                           </p>
+                           <ul className="text-[9px] font-mono text-foreground space-y-1">
+                             {selectedDoctor.degreeFileName && <li>• {selectedDoctor.degreeFileName} (Degree)</li>}
+                             {selectedDoctor.licenseFileName && <li>• {selectedDoctor.licenseFileName} (License)</li>}
+                           </ul>
+                         </div>
+                       )}
+                       {(!selectedDoctor.degreeUrl && !selectedDoctor.licenseUrl && selectedDoctor.documentUploadStatus !== 'pending_storage_setup') && (
                          <p className="text-[10px] text-muted-foreground italic bg-muted/30 p-3 rounded-lg">No digital documents attached to this record.</p>
                        )}
                     </div>
@@ -332,7 +350,7 @@ export default function AdminPage() {
                        Decision Context / Rejection Reason
                     </Label>
                     <Textarea 
-                      placeholder="Enter reason if rejecting (e.g. License proof unclear, Registration Council mismatch)..."
+                      placeholder="Enter reason if rejecting..."
                       value={rejectionReason}
                       onChange={(e) => setRejectionReason(e.target.value)}
                       className="bg-muted/30 rounded-2xl min-h-[100px]"
@@ -350,7 +368,7 @@ export default function AdminPage() {
                 disabled={isProcessing || (selectedDoctor?.verificationStatus === 'pending' && !rejectionReason.trim())}
               >
                 {isProcessing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <XCircle className="h-4 w-4 mr-2" />}
-                REJECT CREDENTIALS
+                REJECT
               </Button>
               <Button 
                 className="bg-primary text-primary-foreground font-black px-10 rounded-xl shadow-xl shadow-primary/20" 

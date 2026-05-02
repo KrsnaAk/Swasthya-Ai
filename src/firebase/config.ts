@@ -5,4 +5,6 @@ export const firebaseConfig = {
   "authDomain": "studio-6339447748-55b75.firebaseapp.com",
   "measurementId": "",
   "messagingSenderId": "1020101711175"
+  // TODO: Add "storageBucket": "studio-6339447748-55b75.firebasestorage.app" 
+  // after enabling Firebase Storage in the console to enable real file uploads.
 };

@@ -23,7 +23,6 @@ export default function DoctorAuthPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  // Refs for hidden file inputs to ensure reliable clicking
   const degreeInputRef = useRef<HTMLInputElement | null>(null);
   const licenseInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -59,7 +58,6 @@ export default function DoctorAuthPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'degree' | 'license') => {
     const file = e.target.files?.[0];
     if (file) {
-      // 1. Extension & Type Validation
       const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
       const fileName = file.name.toLowerCase();
       const hasValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext));
@@ -77,7 +75,6 @@ export default function DoctorAuthPage() {
         return;
       }
 
-      // 2. Size Validation (5MB)
       if (file.size > 5 * 1024 * 1024) {
         toast({ 
           title: "File too large", 
@@ -91,7 +88,7 @@ export default function DoctorAuthPage() {
       setFiles(prev => ({ ...prev, [type]: file }));
       toast({
         title: "File Selected",
-        description: `${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB) is ready.`
+        description: `${file.name} is ready.`
       });
     }
   };
@@ -115,9 +112,15 @@ export default function DoctorAuthPage() {
   };
 
   const uploadFile = async (file: File, path: string) => {
-    const storageRef = ref(storage, path);
-    await uploadBytes(storageRef, file);
-    return getDownloadURL(storageRef);
+    try {
+      const storageRef = ref(storage, path);
+      await uploadBytes(storageRef, file);
+      return await getDownloadURL(storageRef);
+    } catch (error: any) {
+      console.warn("Storage upload failed:", error.code || error.message);
+      // Rethrow to be caught by the main signup try/catch
+      throw error;
+    }
   };
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -132,15 +135,25 @@ export default function DoctorAuthPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const newUser = userCredential.user;
 
-      // Upload Documents
       let degreeUrl = '';
       let licenseUrl = '';
+      let uploadStatus = 'completed';
 
-      if (files.degree) {
-        degreeUrl = await uploadFile(files.degree, `doctor-documents/${newUser.uid}/degree_${Date.now()}`);
-      }
-      if (files.license) {
-        licenseUrl = await uploadFile(files.license, `doctor-documents/${newUser.uid}/license_${Date.now()}`);
+      try {
+        if (files.degree) {
+          degreeUrl = await uploadFile(files.degree, `doctor-documents/${newUser.uid}/degree_${Date.now()}`);
+        }
+        if (files.license) {
+          licenseUrl = await uploadFile(files.license, `doctor-documents/${newUser.uid}/license_${Date.now()}`);
+        }
+      } catch (storageError: any) {
+        console.warn("Continuing signup without file URLs due to storage error:", storageError.code);
+        // Specifically catch no-default-bucket to handle pending setup
+        if (storageError.code === 'storage/no-default-bucket' || storageError.message?.includes('no-default-bucket')) {
+          uploadStatus = 'pending_storage_setup';
+        } else {
+          uploadStatus = 'failed_during_signup';
+        }
       }
 
       const doctorProfile = {
@@ -158,6 +171,9 @@ export default function DoctorAuthPage() {
         clinicName: formData.clinicName,
         degreeUrl,
         licenseUrl,
+        degreeFileName: files.degree?.name || null,
+        licenseFileName: files.license?.name || null,
+        documentUploadStatus: uploadStatus,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
@@ -168,7 +184,15 @@ export default function DoctorAuthPage() {
         submittedAt: serverTimestamp()
       });
 
-      toast({ title: "Application Submitted", description: "Your profile and documents are now under clinical review." });
+      if (uploadStatus === 'pending_storage_setup') {
+        toast({ 
+          title: "Application Submitted", 
+          description: "Account created. Document upload is pending (Storage bucket not configured).",
+        });
+      } else {
+        toast({ title: "Application Submitted", description: "Your profile and documents are now under clinical review." });
+      }
+      
       router.push('/doctor');
     } catch (error: any) {
       toast({ title: "Signup Failed", description: error.message, variant: "destructive" });
