@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -12,6 +11,7 @@ import {
   X, 
   Send, 
   Mic, 
+  MicOff,
   History, 
   Building2, 
   ShieldAlert, 
@@ -19,16 +19,29 @@ import {
   FileText,
   ChevronDown,
   Sparkles,
-  AlertCircle
+  AlertCircle,
+  Volume2,
+  VolumeX,
+  Languages
 } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, collection, serverTimestamp } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { assessSymptoms } from '@/lib/triage-engine';
 import { enhanceChatbotResult } from '@/ai/flows/chatbot-enhancement-flow';
+import { generateSpeech } from '@/ai/flows/tts-flow';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
+import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
+import { t } from '@/lib/translations';
 import { cn } from '@/lib/utils';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface ChatbotPanelProps {
   onClose: () => void;
@@ -41,26 +54,50 @@ export function ChatbotPanel({ onClose }: ChatbotPanelProps) {
   const { toast } = useToast();
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  const [activeLang, setActiveLang] = useState<'en' | 'hi'>('en');
+  const [isMuted, setIsMuted] = useState(false);
+
+  const { 
+    isListening, 
+    transcript, 
+    startListening, 
+    stopListening, 
+    setTranscript 
+  } = useSpeechRecognition(activeLang === 'hi' ? 'hi-IN' : 'en-IN');
+
   const userDocRef = useMemoFirebase(() => {
     if (!db || !user?.uid) return null;
     return doc(db, 'users', user.uid);
   }, [db, user?.uid]);
   const { data: profile } = useDoc(userDocRef);
 
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { 
-      id: '1', 
-      role: 'bot', 
-      content: `Hello! I'm your SwasthyaAI Healthcare Assistant. How can I help you today?`, 
-      timestamp: new Date() 
-    }
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [inputText, setInputText] = useState('');
   
-  // Triage state machine
   const [triageStep, setTriageStep] = useState<number | null>(null);
   const [session, setSession] = useState<Partial<ChatTriageSession>>({});
+
+  useEffect(() => {
+    const welcomeMsg = activeLang === 'hi' 
+      ? `नमस्ते! मैं आपका SwasthyaAI स्वास्थ्य सहायक हूँ। मैं आपकी कैसे मदद कर सकता हूँ?`
+      : `Hello! I'm your SwasthyaAI Healthcare Assistant. How can I help you today?`;
+    
+    setMessages([
+      { 
+        id: '1', 
+        role: 'bot', 
+        content: welcomeMsg, 
+        timestamp: new Date() 
+      }
+    ]);
+  }, [activeLang]);
+
+  useEffect(() => {
+    if (transcript) {
+      setInputText(transcript);
+    }
+  }, [transcript]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -81,6 +118,19 @@ export function ChatbotPanel({ onClose }: ChatbotPanelProps) {
     await new Promise(r => setTimeout(r, 1000));
     addMessage({ role: 'bot', content, type, data });
     setIsTyping(false);
+
+    if (!isMuted) {
+      try {
+        const textToSpeak = type === 'triage_result' 
+          ? `${data.title}. ${data.explanation}. ${data.recommendation}`
+          : content;
+        const audioDataUri = await generateSpeech({ text: textToSpeak, language: activeLang });
+        const audio = new Audio(audioDataUri);
+        audio.play();
+      } catch (e) {
+        console.error('Bot voice output failed', e);
+      }
+    }
   };
 
   const handleSend = async (text: string = inputText) => {
@@ -88,8 +138,9 @@ export function ChatbotPanel({ onClose }: ChatbotPanelProps) {
     
     const userText = text.trim();
     if (userText) {
-      addMessage({ role: 'user', content: userText });
+      addMessage({ role: 'user', content: userText, data: { inputType: transcript ? 'voice' : 'text', language: activeLang } });
       setInputText('');
+      setTranscript('');
     }
 
     if (triageStep !== null) {
@@ -100,46 +151,68 @@ export function ChatbotPanel({ onClose }: ChatbotPanelProps) {
   };
 
   const handleTriageFlow = async (input: string) => {
+    const steps = [
+      t('chatbot_q1', activeLang),
+      t('chatbot_q2', activeLang),
+      t('chatbot_q3', activeLang),
+      t('chatbot_q4', activeLang),
+      t('chatbot_q5', activeLang),
+      t('chatbot_q6', activeLang),
+      t('chatbot_q7', activeLang),
+      t('chatbot_q8', activeLang),
+      t('chatbot_q_analyze', activeLang)
+    ];
+
+    const yesLabels = activeLang === 'hi' ? ['हाँ', 'हा', 'yes'] : ['yes', 'y'];
+
     switch (triageStep) {
-      case 1: // Symptoms
+      case 1: 
         setSession(s => ({ ...s, symptoms: input }));
         setTriageStep(2);
-        botReply("Since how many days or hours have you been feeling this way?");
+        botReply(steps[1]);
         break;
-      case 2: // Duration
+      case 2: 
         setSession(s => ({ ...s, duration: input }));
         setTriageStep(3);
-        botReply("On a scale of 1 to 10, how severe is your discomfort?");
+        botReply(steps[2]);
         break;
-      case 3: // Pain
+      case 3: 
         setSession(s => ({ ...s, painScore: parseInt(input) || 1 }));
         setTriageStep(4);
-        botReply("Are you experiencing any chest pain?", 'quick_reply', ['Yes', 'No']);
+        botReply(steps[3], 'quick_reply', activeLang === 'hi' ? ['हाँ', 'नहीं'] : ['Yes', 'No']);
         break;
-      case 4: // Chest pain
-        setSession(s => ({ ...s, hasChestPain: input.toLowerCase() === 'yes' }));
+      case 4: 
+        setSession(s => ({ ...s, hasChestPain: yesLabels.includes(input.toLowerCase()) }));
         setTriageStep(5);
-        botReply("Are you having any difficulty breathing?", 'quick_reply', ['Yes', 'No']);
+        botReply(steps[4], 'quick_reply', activeLang === 'hi' ? ['हाँ', 'नहीं'] : ['Yes', 'No']);
         break;
-      case 5: // Breathing
-        setSession(s => ({ ...s, hasBreathingDifficulty: input.toLowerCase() === 'yes' }));
+      case 5: 
+        setSession(s => ({ ...s, hasBreathingDifficulty: yesLabels.includes(input.toLowerCase()) }));
         setTriageStep(6);
-        botReply("Did you faint or become unconscious at any point?", 'quick_reply', ['Yes', 'No']);
+        botReply(steps[5], 'quick_reply', activeLang === 'hi' ? ['हाँ', 'नहीं'] : ['Yes', 'No']);
         break;
-      case 6: // Fainting
-        setSession(s => ({ ...s, hasFainting: input.toLowerCase() === 'yes' }));
+      case 6: 
+        setSession(s => ({ ...s, hasFainting: yesLabels.includes(input.toLowerCase()) }));
         setTriageStep(7);
-        botReply("Do you have a high fever?", 'quick_reply', ['Yes', 'No']);
+        botReply(steps[6], 'quick_reply', activeLang === 'hi' ? ['हाँ', 'नहीं'] : ['Yes', 'No']);
         break;
-      case 7: // Fever
-        setSession(s => ({ ...s, hasHighFever: input.toLowerCase() === 'yes' }));
+      case 7: 
+        setSession(s => ({ ...s, hasHighFever: yesLabels.includes(input.toLowerCase()) }));
         setTriageStep(8);
-        botReply("Do you have any chronic conditions (like Diabetes or Asthma) or are you elderly/pregnant?", 'quick_reply', ['Yes', 'No']);
+        botReply(steps[7], 'quick_reply', activeLang === 'hi' ? ['हाँ', 'नहीं'] : ['Yes', 'No']);
         break;
-      case 8: // Final confirmation
-        setSession(s => ({ ...s, hasChronicCondition: input.toLowerCase() === 'yes' }));
+      case 8: 
+        setSession(s => ({ ...s, hasChronicCondition: yesLabels.includes(input.toLowerCase()) }));
+        setTriageStep(9);
+        botReply(steps[8], 'quick_reply', activeLang === 'hi' ? ['हाँ', 'नहीं'] : ['Yes', 'No']);
+        break;
+      case 9:
         setTriageStep(null);
-        await performTriageAnalysis({ ...session, hasChronicCondition: input.toLowerCase() === 'yes' } as ChatTriageSession);
+        if (yesLabels.includes(input.toLowerCase())) {
+          await performTriageAnalysis({ ...session } as ChatTriageSession);
+        } else {
+          botReply(activeLang === 'hi' ? "ठीक है, मैं रुक जाता हूँ।" : "Understood, analysis cancelled.");
+        }
         break;
     }
   };
@@ -147,7 +220,6 @@ export function ChatbotPanel({ onClose }: ChatbotPanelProps) {
   const performTriageAnalysis = async (finalSession: ChatTriageSession) => {
     setIsTyping(true);
     
-    // Rule-based engine call
     const result = assessSymptoms({
       symptoms: finalSession.symptoms,
       duration: parseInt(finalSession.duration) || 1,
@@ -168,6 +240,7 @@ export function ChatbotPanel({ onClose }: ChatbotPanelProps) {
         severity: result.severity,
         duration: finalSession.duration,
         painScore: finalSession.painScore,
+        language: activeLang,
         redFlags: [
           finalSession.hasChestPain ? 'Chest Pain' : null,
           finalSession.hasBreathingDifficulty ? 'Breathing Difficulty' : null,
@@ -185,12 +258,15 @@ export function ChatbotPanel({ onClose }: ChatbotPanelProps) {
 
     const fullResult = {
       ...result,
-      aiInsights
+      title: activeLang === 'hi' 
+        ? (result.severity === 'RED' ? "आपातकालीन (RED)" : result.severity === 'YELLOW' ? "डॉक्टर से सलाह आवश्यक (YELLOW)" : "होम केयर (GREEN)")
+        : result.label,
+      aiInsights,
+      disclaimer: t('chatbot_disclaimer', activeLang)
     };
 
-    botReply("Analysis complete. Here is your triage assessment:", 'triage_result', fullResult);
+    botReply(t('chatbot_analysis_complete', activeLang), 'triage_result', fullResult);
     
-    // Save to Firestore
     if (db && user?.uid) {
       const recordsRef = collection(db, 'chat_triage_records');
       addDocumentNonBlocking(recordsRef, {
@@ -207,7 +283,8 @@ export function ChatbotPanel({ onClose }: ChatbotPanelProps) {
           finalSession.hasFainting && 'Fainting',
         ].filter(Boolean),
         createdAt: serverTimestamp(),
-        source: 'chatbot'
+        source: 'chatbot',
+        language: activeLang
       });
     }
 
@@ -216,43 +293,52 @@ export function ChatbotPanel({ onClose }: ChatbotPanelProps) {
 
   const handleGeneralQuery = (text: string) => {
     const q = text.toLowerCase();
-    if (q.includes('symptom') || q.includes('check')) {
+    const isSymptom = q.includes('symptom') || q.includes('check') || q.includes('लक्षण') || q.includes('जांच');
+    const isHospital = q.includes('hospital') || q.includes('facility') || q.includes('अस्पताल');
+    const isEmergency = q.includes('emergency') || q.includes('help') || q.includes('इमरजेंसी') || q.includes('मदद');
+
+    if (isSymptom) {
       startTriage();
-    } else if (q.includes('hospital') || q.includes('facility')) {
-      botReply("I can help you find a hospital. Redirecting you to the Facility Finder...", 'text');
+    } else if (isHospital) {
+      botReply(activeLang === 'hi' ? "मैं आपको अस्पताल खोजने में मदद कर सकता हूँ। सुविधा खोजक पर रिडायरेक्ट कर रहा हूँ..." : "I can help you find a hospital. Redirecting you to the Facility Finder...", 'text');
       setTimeout(() => router.push('/facilities'), 1500);
-    } else if (q.includes('emergency') || q.includes('help')) {
+    } else if (isEmergency) {
       triggerEmergencyHelp();
-    } else if (q.includes('history')) {
-      botReply("Fetching your clinical timeline...");
-      setTimeout(() => router.push('/history'), 1500);
     } else {
-      botReply("I'm trained to help with healthcare navigation. Would you like to start a symptom check or find a nearby hospital?");
+      botReply(activeLang === 'hi' 
+        ? "मैं स्वास्थ्य सेवा नेविगेशन में मदद करने के लिए प्रशिक्षित हूँ। क्या आप लक्षण जांच शुरू करना चाहेंगे या पास के अस्पताल को खोजना चाहेंगे?"
+        : "I'm trained to help with healthcare navigation. Would you like to start a symptom check or find a nearby hospital?");
     }
   };
 
   const startTriage = () => {
     setTriageStep(1);
     setSession({});
-    botReply("Understood. I will guide you through a safety assessment. What symptoms are you experiencing?");
+    botReply(t('chatbot_q1', activeLang));
   };
 
   const triggerEmergencyHelp = () => {
-    botReply("🚨 ATTENTION: If this is a life-threatening emergency, call 108 immediately.", 'text');
-    botReply("Would you like to open the SOS Emergency Panel?", 'quick_reply', ['Open SOS Panel', 'Find Emergency Hospital', 'No, I am okay']);
+    botReply(activeLang === 'hi' ? "🚨 ध्यान दें: यदि यह जानलेवा स्थिति है, तो तुरंत 108 पर कॉल करें।" : "🚨 ATTENTION: If this is a life-threatening emergency, call 108 immediately.", 'text');
+    botReply(activeLang === 'hi' ? "क्या आप SOS इमरजेंसी पैनल खोलना चाहेंगे?" : "Would you like to open the SOS Emergency Panel?", 'quick_reply', activeLang === 'hi' ? ['SOS पैनल खोलें', 'इमरजेंसी अस्पताल खोजें', 'नहीं, मैं ठीक हूँ'] : ['Open SOS Panel', 'Find Emergency Hospital', 'No, I am okay']);
   };
 
   const handleQuickReply = (reply: string) => {
     addMessage({ role: 'user', content: reply });
     
+    const startTriageLabels = [t('chatbot_start_triage', 'en'), t('chatbot_start_triage', 'hi')];
+    const findHospitalLabels = [t('chatbot_find_hospital', 'en'), t('chatbot_find_hospital', 'hi'), 'Find Emergency Hospital', 'इमरजेंसी अस्पताल खोजें'];
+    const emergencyLabels = [t('chatbot_emergency_help', 'en'), t('chatbot_emergency_help', 'hi'), 'Open SOS Panel', 'SOS पैनल खोलें'];
+    const summaryLabels = [t('chatbot_generate_summary', 'en'), t('chatbot_generate_summary', 'hi')];
+    const historyLabels = [t('chatbot_view_history', 'en'), t('chatbot_view_history', 'hi')];
+
     if (triageStep !== null) {
       handleTriageFlow(reply);
     } else {
-      if (reply === 'Start symptom check') startTriage();
-      else if (reply === 'Find nearest hospital' || reply === 'Find Emergency Hospital') router.push('/facilities');
-      else if (reply === 'Emergency help' || reply === 'Open SOS Panel') router.push('/sos');
-      else if (reply === 'Generate doctor summary') router.push('/records');
-      else if (reply === 'View health history') router.push('/history');
+      if (startTriageLabels.includes(reply)) startTriage();
+      else if (findHospitalLabels.includes(reply)) router.push('/facilities');
+      else if (emergencyLabels.includes(reply)) router.push('/sos');
+      else if (summaryLabels.includes(reply)) router.push('/records');
+      else if (historyLabels.includes(reply)) router.push('/history');
       else handleGeneralQuery(reply);
     }
   };
@@ -263,23 +349,44 @@ export function ChatbotPanel({ onClose }: ChatbotPanelProps) {
       <div className="bg-primary p-4 flex items-center justify-between text-primary-foreground shadow-lg">
         <div className="flex items-center gap-3">
           <div className="bg-white/20 p-2 rounded-xl">
-            <Bot className="h-5 w-5" />
+            <Sparkles className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="font-headline font-bold text-sm leading-tight">Decision Assistant</h3>
-            <p className="text-[10px] opacity-80 flex items-center gap-1 font-medium">
-              <Sparkles className="h-2 w-2" /> Powered by SwasthyaAI
-            </p>
+            <h3 className="font-headline font-bold text-sm leading-tight">{t('chatbot_title', activeLang)}</h3>
+            <div className="flex items-center gap-2 mt-0.5">
+              <Sparkles className="h-2 w-2 opacity-80" />
+              <span className="text-[10px] font-medium opacity-80 uppercase tracking-tighter">Bilingual AI</span>
+            </div>
           </div>
         </div>
-        <Button variant="ghost" size="icon" onClick={onClose} className="hover:bg-white/10 rounded-full h-8 w-8">
-          <X className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Select value={activeLang} onValueChange={(v: any) => setActiveLang(v)}>
+            <SelectTrigger className="w-[85px] bg-white/10 border-none h-7 text-[10px] text-white focus:ring-0">
+              <Languages className="h-3 w-3 mr-1" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="en">English</SelectItem>
+              <SelectItem value="hi">हिंदी</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => setIsMuted(!isMuted)} 
+            className="hover:bg-white/10 rounded-full h-8 w-8 text-white"
+          >
+            {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+          </Button>
+          <Button variant="ghost" size="icon" onClick={onClose} className="hover:bg-white/10 rounded-full h-8 w-8 text-white">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Warning Bar */}
       <div className="bg-destructive/10 border-b border-destructive/20 p-2 text-[10px] text-destructive font-bold text-center uppercase tracking-widest flex items-center justify-center gap-2">
-        <AlertCircle className="h-3 w-3" /> NOT FOR MEDICAL DIAGNOSIS
+        <AlertCircle className="h-3 w-3" /> {activeLang === 'hi' ? "मेडिकल डायग्नोसिस के लिए नहीं" : "NOT FOR MEDICAL DIAGNOSIS"}
       </div>
 
       {/* Messages */}
@@ -287,7 +394,7 @@ export function ChatbotPanel({ onClose }: ChatbotPanelProps) {
         <div className="space-y-2">
           {messages.map(m => (
             <div key={m.id}>
-              <ChatMessageBubble message={m} />
+              <ChatMessageBubble message={m} language={activeLang} />
               {m.type === 'quick_reply' && (
                 <div className="flex flex-wrap gap-2 mb-4 ml-11">
                   {m.data.map((reply: string) => (
@@ -312,7 +419,11 @@ export function ChatbotPanel({ onClose }: ChatbotPanelProps) {
       {/* Quick Replies Footer */}
       {triageStep === null && (
         <div className="px-4 py-2 flex gap-2 overflow-x-auto border-t border-border/50 bg-muted/20 no-scrollbar">
-          {['Start symptom check', 'Find nearest hospital', 'Emergency help'].map(label => (
+          {[
+            t('chatbot_start_triage', activeLang), 
+            t('chatbot_find_hospital', activeLang), 
+            t('chatbot_emergency_help', activeLang)
+          ].map(label => (
             <button 
               key={label}
               onClick={() => handleQuickReply(label)}
@@ -326,11 +437,16 @@ export function ChatbotPanel({ onClose }: ChatbotPanelProps) {
 
       {/* Input Area */}
       <div className="p-4 bg-background border-t border-border flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="shrink-0 text-muted-foreground hover:text-primary">
-          <Mic className="h-5 w-5" />
+        <Button 
+          variant={isListening ? "destructive" : "ghost"} 
+          size="icon" 
+          className={cn("shrink-0", isListening ? "animate-pulse" : "text-muted-foreground hover:text-primary")}
+          onClick={isListening ? stopListening : startListening}
+        >
+          {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
         </Button>
         <Input 
-          placeholder={triageStep ? "Type your answer..." : "Ask about your health..."} 
+          placeholder={t('chatbot_input_placeholder', activeLang)} 
           className="bg-muted/50 border-none focus-visible:ring-1 focus-visible:ring-primary h-11 text-sm rounded-xl"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
@@ -345,18 +461,5 @@ export function ChatbotPanel({ onClose }: ChatbotPanelProps) {
         </Button>
       </div>
     </div>
-  );
-}
-
-function Bot({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M12 8V4H8" />
-      <rect width="16" height="12" x="4" y="8" rx="2" />
-      <path d="M2 14h2" />
-      <path d="M20 14h2" />
-      <path d="M15 13v2" />
-      <path d="M9 13v2" />
-    </svg>
   );
 }

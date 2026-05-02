@@ -1,7 +1,6 @@
-
 'use server';
 /**
- * @fileOverview This flow enhances chatbot explanations and summaries.
+ * @fileOverview This flow enhances chatbot explanations and summaries with bilingual support.
  */
 
 import { ai } from '@/ai/genkit';
@@ -13,6 +12,7 @@ const ChatbotEnhancementInputSchema = z.object({
   duration: z.string(),
   painScore: z.number(),
   redFlags: z.array(z.string()),
+  language: z.enum(['en', 'hi']).default('en'),
   userContext: z.object({
     name: z.string().optional(),
     age: z.number().optional(),
@@ -38,7 +38,9 @@ const prompt = ai.definePrompt({
   input: { schema: ChatbotEnhancementInputSchema },
   output: { schema: ChatbotEnhancementOutputSchema },
   prompt: `You are a healthcare traffic controller assistant. A user has completed a rule-based triage. 
-Your goal is to explain the result empathy and provide next steps.
+Your goal is to explain the result with empathy and provide next steps.
+
+IMPORTANT: You MUST respond in the following language: {{{language}}}.
 
 ### CONTEXT:
 - Severity: {{{severity}}}
@@ -59,7 +61,9 @@ Your goal is to explain the result empathy and provide next steps.
 5. If YELLOW or GREEN, be calm and informative.
 
 ### OUTPUT:
-Explain why the system flagged these symptoms based on clinical urgency, not disease.`,
+Explain why the system flagged these symptoms based on clinical urgency, not disease. 
+Ensure the tone is supportive but professional. 
+All output fields must be in {{{language}}}.`,
 });
 
 const chatbotEnhancementFlow = ai.defineFlow(

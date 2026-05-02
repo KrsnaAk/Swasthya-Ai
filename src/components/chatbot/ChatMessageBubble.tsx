@@ -1,15 +1,36 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { ChatMessage } from '@/lib/chatbot/types';
-import { ShieldAlert, AlertTriangle, CheckCircle2, User, Bot } from 'lucide-react';
+import { ShieldAlert, AlertTriangle, CheckCircle2, User, Bot, Volume2, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { generateSpeech } from '@/ai/flows/tts-flow';
 
 interface ChatMessageBubbleProps {
   message: ChatMessage;
+  language?: 'en' | 'hi';
 }
 
-export function ChatMessageBubble({ message }: ChatMessageBubbleProps) {
+export function ChatMessageBubble({ message, language = 'en' }: ChatMessageBubbleProps) {
   const isUser = message.role === 'user';
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const handlePlayVoice = async () => {
+    if (isPlaying) return;
+    setIsPlaying(true);
+    try {
+      const textToSpeak = message.type === 'triage_result' 
+        ? `${message.data.title}. ${message.data.explanation}. ${message.data.recommendation}`
+        : message.content;
+      
+      const audioDataUri = await generateSpeech({ text: textToSpeak, language });
+      const audio = new Audio(audioDataUri);
+      audio.onended = () => setIsPlaying(false);
+      audio.play();
+    } catch (e) {
+      console.error('Speech playback failed', e);
+      setIsPlaying(false);
+    }
+  };
 
   return (
     <div className={cn("flex w-full mb-4 gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300", isUser ? "flex-row-reverse" : "flex-row")}>
@@ -21,13 +42,24 @@ export function ChatMessageBubble({ message }: ChatMessageBubbleProps) {
       </div>
       
       <div className={cn(
-        "max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-sm",
+        "max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-sm relative group",
         isUser 
           ? "bg-primary text-primary-foreground rounded-tr-none" 
           : "bg-muted/80 backdrop-blur-sm border border-border/50 text-foreground rounded-tl-none"
       )}>
+        {!isUser && (
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="absolute -right-10 top-0 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 text-muted-foreground hover:text-primary"
+            onClick={handlePlayVoice}
+          >
+            {isPlaying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+          </Button>
+        )}
+
         {message.type === 'triage_result' ? (
-          <TriageResultCard result={message.data} />
+          <TriageResultCard result={message.data} language={language} />
         ) : (
           <div className="whitespace-pre-wrap leading-relaxed">
             {message.content}
@@ -41,9 +73,14 @@ export function ChatMessageBubble({ message }: ChatMessageBubbleProps) {
   );
 }
 
-function TriageResultCard({ result }: { result: any }) {
+function TriageResultCard({ result, language }: { result: any, language: string }) {
   const isRed = result.severity === 'RED';
   const isYellow = result.severity === 'YELLOW';
+  const labels = {
+    why: language === 'hi' ? 'यह स्थिति क्यों है?' : 'Why this status?',
+    action: language === 'hi' ? 'अनुशंसित कार्रवाई' : 'Recommended Action',
+    ai: language === 'hi' ? 'AI सारांश' : 'AI Summary'
+  };
 
   return (
     <div className="space-y-4 min-w-[280px]">
@@ -58,21 +95,21 @@ function TriageResultCard({ result }: { result: any }) {
 
       <div className="space-y-3 text-foreground">
         <div>
-          <p className="font-bold text-xs uppercase opacity-60 mb-1">Why this status?</p>
+          <p className="font-bold text-xs uppercase opacity-60 mb-1">{labels.why}</p>
           <p className="text-sm italic">"{result.explanation}"</p>
         </div>
 
         {result.aiInsights && (
           <div className="p-3 bg-background/50 rounded-lg border border-border/50 space-y-2">
              <p className="text-xs font-bold text-primary flex items-center gap-1 uppercase">
-               <Bot className="h-3 w-3" /> AI Summary
+               <Bot className="h-3 w-3" /> {labels.ai}
              </p>
              <p className="text-xs leading-normal">{result.aiInsights.friendlyExplanation}</p>
           </div>
         )}
 
         <div>
-          <p className="font-bold text-xs uppercase opacity-60 mb-1">Recommended Action</p>
+          <p className="font-bold text-xs uppercase opacity-60 mb-1">{labels.action}</p>
           <p className="text-sm font-medium">{result.recommendation}</p>
         </div>
 
