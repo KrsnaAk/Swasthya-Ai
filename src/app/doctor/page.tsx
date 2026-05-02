@@ -41,6 +41,26 @@ export default function DoctorDashboard() {
 
   const { data: profile } = useDoc(userDocRef);
 
+  const seededPatient = {
+    id: "0xzdXIIRsmSdZ7yspuY6s984q1Y2",
+    name: "Madhav Ambani",
+    abhaId: "91-7267-4417-6579",
+    age: 35,
+    gender: "Male",
+    bloodGroup: "A+",
+    city: "Mumbai",
+    phone: "9999911111",
+    emergencyContactName: "Mukesh Ambani",
+    emergencyContactPhone: "6202128292",
+    allergies: "Penicillin",
+    existingDiseases: "Type 2 Diabetes, Hypertension",
+    medications: "Metformin 500 mg (twice daily), Amlodipine 5 mg (once daily)",
+    pastSurgeries: "Appendectomy (2015)",
+    vaccinationNotes: "COVID-19 (2 doses + booster)",
+    preferredLanguage: "en",
+    role: "patient"
+  };
+
   const handleSearch = async () => {
     if (!searchQuery || !db) return;
     setIsSearching(true);
@@ -64,11 +84,25 @@ export default function DoctorDashboard() {
         found = nameSnapshot.docs.map(d => ({ ...d.data(), id: d.id }));
       }
 
+      // Logic to show seeded patient if no real results match
+      if (found.length === 0) {
+        const queryNorm = searchQuery.toLowerCase().trim();
+        if (queryNorm === seededPatient.name.toLowerCase() || queryNorm === seededPatient.abhaId) {
+          found = [seededPatient];
+        }
+      }
+
       setResults(found);
       if (found.length === 0) toast({ title: "No Patient Found", description: "Try searching by exact Patient ID." });
     } catch (e) {
       console.error(e);
-      toast({ variant: 'destructive', title: "Search Failed" });
+      // Fallback search check even on network failure
+      const queryNorm = searchQuery.toLowerCase().trim();
+      if (queryNorm === seededPatient.name.toLowerCase() || queryNorm === seededPatient.abhaId) {
+        setResults([seededPatient]);
+      } else {
+        toast({ variant: 'destructive', title: "Search Failed" });
+      }
     } finally {
       setIsSearching(false);
     }
