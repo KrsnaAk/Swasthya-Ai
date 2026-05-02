@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/app-shell';
-import { useFirestore, useCollection, useMemoFirebase, useUser, useDoc } from '@/firebase';
-import { collection, query, orderBy, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -25,7 +25,8 @@ import {
   Briefcase,
   AlertTriangle,
   Lock,
-  Database
+  Database,
+  RefreshCcw
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -38,6 +39,9 @@ export default function AdminPage() {
   const { toast } = useToast();
   const router = useRouter();
   
+  const [applications, setApplications] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [selectedDoctor, setSelectedDoctor] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
@@ -49,44 +53,74 @@ export default function AdminPage() {
 
   const { data: profile, isLoading: isProfileLoading } = useDoc(userDocRef);
 
-  const applicationsQuery = useMemoFirebase(() => {
-    if (!db) return null;
-    return query(collection(db, 'doctorApplications'), orderBy('submittedAt', 'desc'));
-  }, [db]);
+  const fetchApplications = async () => {
+    if (!user) return;
+    setIsLoading(true);
+    setApiError(null);
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch('/api/admin/doctor-applications', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setApplications(data.applications || []);
+      } else {
+        setApiError(data.error || 'Failed to load applications');
+      }
+    } catch (e: any) {
+      setApiError(e.message || 'Network error fetching applications');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  const { data: applications, isLoading, error: listError } = useCollection(applicationsQuery);
+  useEffect(() => {
+    if (user) {
+      fetchApplications();
+    }
+  }, [user]);
 
   const handleReview = async (status: 'verified' | 'rejected') => {
-    if (!selectedDoctor || !db) return;
+    if (!selectedDoctor || !user) return;
     setIsProcessing(true);
     try {
-      const docId = selectedDoctor.id;
-      const updateData = {
-        verificationStatus: status,
-        reviewedAt: serverTimestamp(),
-        reviewedBy: user?.uid,
+      const token = await user.getIdToken();
+      const endpoint = status === 'verified' ? '/api/admin/verify-doctor' : '/api/admin/reject-doctor';
+      const body = {
+        doctorUid: selectedDoctor.id,
         rejectionReason: status === 'rejected' ? rejectionReason : null
       };
 
-      // Update application
-      await updateDoc(doc(db, 'doctorApplications', docId), updateData);
-      // Update user role/status
-      await updateDoc(doc(db, 'users', docId), {
-        verificationStatus: status,
-        updatedAt: serverTimestamp()
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(body)
       });
 
-      toast({ title: `Doctor ${status}`, description: `Action applied to ${selectedDoctor.name}` });
-      setSelectedDoctor(null);
-      setRejectionReason('');
-    } catch (e) {
-      toast({ variant: 'destructive', title: "Error", description: "Could not update status." });
+      const data = await response.json();
+
+      if (data.success) {
+        toast({ title: `Doctor ${status}`, description: `Action applied to ${selectedDoctor.name}` });
+        setSelectedDoctor(null);
+        setRejectionReason('');
+        fetchApplications(); // Refresh list
+      } else {
+        toast({ variant: 'destructive', title: "Error", description: data.error || "Could not update status." });
+      }
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: "Error", description: e.message || "Failed to process review." });
     } finally {
       setIsProcessing(false);
     }
   };
 
-  if (isProfileLoading || isLoading) {
+  if (isProfileLoading) {
     return (
       <AppShell>
         <div className="flex h-[60vh] w-full items-center justify-center">
@@ -96,7 +130,7 @@ export default function AdminPage() {
     );
   }
 
-  // Double-check real admin status (Firestore role OR hardcoded UID)
+  // Final access check
   const isAuthorized = profile?.role === 'admin' || user?.uid === "Zn1wDP2cfzNglUFfGyVQAi64qSk2";
 
   if (!isAuthorized) {
@@ -108,7 +142,7 @@ export default function AdminPage() {
           </div>
           <h1 className="text-3xl font-headline font-bold">Access Restricted</h1>
           <p className="text-muted-foreground leading-relaxed">
-            You must have administrator privileges to access this area.
+            Administrative privileges required. Please verify your role with the clinical data architect.
           </p>
           <Button onClick={() => router.push('/')} className="rounded-xl px-8 bg-primary">Back to Safety</Button>
         </div>
@@ -133,10 +167,10 @@ export default function AdminPage() {
                  <span className="text-foreground">{user?.uid}</span>
               </div>
            </div>
-           {listError && (
+           {apiError && (
              <div className="flex items-center gap-2 text-destructive font-bold animate-pulse">
                 <AlertTriangle className="h-3 w-3" />
-                <span>PERMISSION ERROR: {listError.message}</span>
+                <span>API ERROR: {apiError}</span>
              </div>
            )}
         </div>
@@ -144,12 +178,16 @@ export default function AdminPage() {
         <div className="flex justify-between items-center">
            <div>
               <h1 className="text-3xl font-headline font-bold">Admin Portal</h1>
-              <p className="text-muted-foreground">Manage healthcare professional verifications and proofs.</p>
+              <p className="text-muted-foreground">Manage healthcare professional verifications via privileged backend API.</p>
            </div>
            <div className="flex gap-4">
-              <Card className="bg-primary/5 p-4 border-primary/20">
-                 <p className="text-[10px] font-black uppercase text-primary">Pending Reviews</p>
-                 <p className="text-2xl font-black">{applications?.filter(a => a.verificationStatus === 'pending').length || 0}</p>
+              <Button variant="outline" size="sm" onClick={fetchApplications} disabled={isLoading}>
+                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCcw className="h-4 w-4 mr-2" />}
+                 Refresh List
+              </Button>
+              <Card className="bg-primary/5 px-4 py-2 border-primary/20 flex flex-col justify-center">
+                 <p className="text-[9px] font-black uppercase text-primary leading-none mb-1">Pending Reviews</p>
+                 <p className="text-xl font-black leading-none">{applications?.filter(a => a.verificationStatus === 'pending').length || 0}</p>
               </Card>
            </div>
         </div>
@@ -157,7 +195,7 @@ export default function AdminPage() {
         <Card className="border-border bg-card">
           <CardHeader>
             <CardTitle>Professional Applications</CardTitle>
-            <CardDescription>Review clinical credentials, medical licenses, and degree certificates.</CardDescription>
+            <CardDescription>Review clinical credentials and medical licenses fetched from secure cloud records.</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
@@ -166,42 +204,50 @@ export default function AdminPage() {
                   <TableHead>Full Name</TableHead>
                   <TableHead>Specialization</TableHead>
                   <TableHead>License #</TableHead>
-                  <TableHead>Documents</TableHead>
+                  <TableHead>Proofs</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {applications?.map((doc) => (
-                  <TableRow key={doc.id}>
-                    <TableCell className="font-bold">{doc.name}</TableCell>
-                    <TableCell>{doc.specialization}</TableCell>
-                    <TableCell className="font-mono text-xs text-primary">{doc.licenseNumber}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        {doc.degreeUrl && <Badge variant="outline" className="text-[9px]"><FileText className="h-2 w-2 mr-1" /> Degree</Badge>}
-                        {doc.licenseUrl && <Badge variant="outline" className="text-[9px]"><ClipboardCheck className="h-2 w-2 mr-1" /> License</Badge>}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={
-                        doc.verificationStatus === 'verified' ? 'default' : 
-                        doc.verificationStatus === 'rejected' ? 'destructive' : 'secondary'
-                      }>
-                        {doc.verificationStatus?.toUpperCase() || 'UNKNOWN'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" onClick={() => setSelectedDoctor(doc)}>
-                        <Eye className="h-4 w-4 mr-2" /> Audit
-                      </Button>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-20">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
+                      <p className="text-muted-foreground font-medium">Fetching clinical records...</p>
                     </TableCell>
                   </TableRow>
-                ))}
-                {(!applications || applications.length === 0) && !isLoading && (
+                ) : applications.length > 0 ? (
+                  applications.map((doc) => (
+                    <TableRow key={doc.id}>
+                      <TableCell className="font-bold">{doc.name}</TableCell>
+                      <TableCell>{doc.specialization}</TableCell>
+                      <TableCell className="font-mono text-xs text-primary">{doc.licenseNumber || doc.medicalLicenseNumber}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          {(doc.degreeUrl || doc.degreeFileName) && <Badge variant="outline" className="text-[9px] bg-primary/5">Degree</Badge>}
+                          {(doc.licenseUrl || doc.licenseProof) && <Badge variant="outline" className="text-[9px] bg-primary/5">License</Badge>}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={
+                          doc.verificationStatus === 'verified' ? 'default' : 
+                          doc.verificationStatus === 'rejected' ? 'destructive' : 'secondary'
+                        }>
+                          {doc.verificationStatus?.toUpperCase() || 'UNKNOWN'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="sm" onClick={() => setSelectedDoctor(doc)}>
+                          <Eye className="h-4 w-4 mr-2" /> Audit
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-10 text-muted-foreground italic">
-                      No clinical applications found in records.
+                    <TableCell colSpan={6} className="text-center py-20 text-muted-foreground italic">
+                      No clinical applications found in backend records.
                     </TableCell>
                   </TableRow>
                 )}
@@ -216,7 +262,7 @@ export default function AdminPage() {
               <DialogTitle className="flex items-center gap-2 text-xl">
                 <ShieldCheck className="h-6 w-6 text-primary" /> Professional Credential Audit
               </DialogTitle>
-              <DialogDescription>Verify the identity and clinical authority of this professional against uploaded proofs.</DialogDescription>
+              <DialogDescription>Verify the identity and clinical authority of this professional against backend proofs.</DialogDescription>
             </DialogHeader>
             
             {selectedDoctor && (
@@ -236,7 +282,7 @@ export default function AdminPage() {
                     <div className="grid grid-cols-2 gap-6">
                        <div>
                           <p className="text-[10px] font-black uppercase text-muted-foreground mb-1 tracking-widest">Medical License #</p>
-                          <p className="font-mono text-primary font-bold">{selectedDoctor.licenseNumber}</p>
+                          <p className="font-mono text-primary font-bold">{selectedDoctor.licenseNumber || selectedDoctor.medicalLicenseNumber}</p>
                        </div>
                        <div>
                           <p className="text-[10px] font-black uppercase text-muted-foreground mb-1 tracking-widest">Registration Council</p>
@@ -273,18 +319,23 @@ export default function AdminPage() {
                            </a>
                          </Button>
                        )}
+                       {(!selectedDoctor.degreeUrl && !selectedDoctor.licenseUrl) && (
+                         <p className="text-[10px] text-muted-foreground italic bg-muted/30 p-3 rounded-lg">No digital documents attached to this record.</p>
+                       )}
                     </div>
                   </div>
                 </div>
 
                 {selectedDoctor.verificationStatus === 'pending' && (
                   <div className="space-y-4 border-t border-border pt-6">
-                    <Label className="text-xs font-bold uppercase">Decision Context / Rejection Reason</Label>
+                    <Label className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
+                       Decision Context / Rejection Reason
+                    </Label>
                     <Textarea 
                       placeholder="Enter reason if rejecting (e.g. License proof unclear, Registration Council mismatch)..."
                       value={rejectionReason}
                       onChange={(e) => setRejectionReason(e.target.value)}
-                      className="bg-muted/30"
+                      className="bg-muted/30 rounded-2xl min-h-[100px]"
                     />
                   </div>
                 )}
@@ -294,19 +345,20 @@ export default function AdminPage() {
             <DialogFooter className="gap-3 border-t border-border pt-6">
               <Button 
                 variant="outline" 
-                className="text-destructive border-destructive/20 hover:bg-destructive/5 font-bold" 
+                className="text-destructive border-destructive/20 hover:bg-destructive/5 font-bold rounded-xl px-6" 
                 onClick={() => handleReview('rejected')} 
                 disabled={isProcessing || (selectedDoctor?.verificationStatus === 'pending' && !rejectionReason.trim())}
               >
-                <XCircle className="h-4 w-4 mr-2" /> Reject Credentials
+                {isProcessing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <XCircle className="h-4 w-4 mr-2" />}
+                REJECT CREDENTIALS
               </Button>
               <Button 
-                className="bg-primary text-primary-foreground font-black px-8" 
+                className="bg-primary text-primary-foreground font-black px-10 rounded-xl shadow-xl shadow-primary/20" 
                 onClick={() => handleReview('verified')} 
-                disabled={isProcessing}
+                disabled={isProcessing || selectedDoctor?.verificationStatus === 'verified'}
               >
                 {isProcessing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-                APPROVE PROFESSIONAL ACCESS
+                APPROVE DOCTOR
               </Button>
             </DialogFooter>
           </DialogContent>
