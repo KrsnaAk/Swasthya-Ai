@@ -63,7 +63,7 @@ export default function DoctorBuddyPage() {
   const router = useRouter();
   const [filter, setFilter] = useState("");
 
-  // Safely fetch ONLY the current user's profile
+  // Safely fetch ONLY the current user's profile to avoid global /users list permission errors
   const userDocRef = useMemoFirebase(() => {
     if (!db || !user?.uid) return null;
     return doc(db, 'users', user.uid);
