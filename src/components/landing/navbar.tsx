@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -6,6 +5,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { HeartPulse } from 'lucide-react';
 import { useUser } from '@/firebase';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export function LandingNavbar() {
   const { user } = useUser();
@@ -32,6 +32,7 @@ export function LandingNavbar() {
         </div>
 
         <div className="flex items-center gap-4">
+          <ThemeToggle />
           {user ? (
             <Button asChild variant="secondary" className="font-black uppercase text-xs tracking-widest rounded-xl px-6 h-11 border border-white/5 shadow-xl">
               <Link href="/dashboard">Portal Dashboard</Link>

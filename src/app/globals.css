@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -27,6 +26,13 @@
     --ring: 185 85% 38%;
     --radius: 1rem;
   }
+
+  .light {
+    --background: 0 0% 100%;
+    --foreground: 215 50% 6%;
+    /* We keep component colors (cards, etc.) dark to maintain the medical professional look 
+       but we ensure the primary background turns white. */
+  }
 }
 
 @layer base {
@@ -34,11 +40,17 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-body;
+    @apply bg-background text-foreground font-body transition-colors duration-300;
     background-image: radial-gradient(circle at 50% -20%, hsl(var(--primary) / 0.1) 0%, transparent 50%),
                       radial-gradient(circle at 0% 100%, hsl(var(--accent) / 0.05) 0%, transparent 40%);
     background-attachment: fixed;
   }
+  
+  .light body {
+    background-image: none;
+    background-color: white;
+  }
+
   h1, h2, h3, h4, h5, h6 {
     @apply font-headline tracking-tight;
   }
@@ -46,6 +58,10 @@
 
 .glass-panel {
   @apply bg-card/60 backdrop-blur-xl border border-white/5 shadow-2xl;
+}
+
+.light .glass-panel {
+  @apply bg-card/90; /* Make glass more opaque in light mode for contrast */
 }
 
 .medical-gradient-text {

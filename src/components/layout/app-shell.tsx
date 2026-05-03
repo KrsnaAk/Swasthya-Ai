@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useMemo } from "react";
@@ -24,6 +23,7 @@ import { ChatbotButton } from "@/components/chatbot/ChatbotButton";
 import NextLink from "next/link";
 import { doc } from "firebase/firestore";
 import { Badge } from "@/components/ui/badge";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -193,8 +193,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </h2>
             </div>
             <div className="flex items-center gap-4 text-xs font-bold text-muted-foreground">
-              <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-              SECURE CLINICAL SESSION
+              <ThemeToggle />
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                SECURE CLINICAL SESSION
+              </div>
             </div>
           </header>
           <main className="flex-1 overflow-y-auto p-8 relative">
