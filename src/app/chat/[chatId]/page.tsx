@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -9,8 +10,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, User as UserIcon, Loader2, MessageCircle } from 'lucide-react';
+import { Send, User as UserIcon, Loader2, MessageCircle, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function ChatPage() {
   const params = useParams();
@@ -24,6 +27,10 @@ export default function ChatPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [inputText, setInputText] = useState("");
 
+  // Determine participants from chatId (standard format: UID1_UID2)
+  const participants = chatId.split('_');
+  const otherPartyId = participants.find(id => id !== user?.uid) || '';
+
   const messagesQuery = useMemoFirebase(() => {
     if (!db) return null;
     return query(
@@ -32,7 +39,7 @@ export default function ChatPage() {
     );
   }, [db, chatId]);
 
-  const { data: messages, isLoading } = useCollection(messagesQuery);
+  const { data: messages, isLoading, error } = useCollection(messagesQuery);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -46,17 +53,35 @@ export default function ChatPage() {
     setInputText("");
 
     const chatRef = doc(db, 'consultationChats', chatId);
-    await setDoc(chatRef, {
+    
+    // Ensure chat document exists with standard participant metadata
+    setDoc(chatRef, {
       updatedAt: serverTimestamp(),
       lastMessage: text,
-      chatId: chatId
-    }, { merge: true });
+      chatId: chatId,
+      participants: participants,
+      patientId: role === 'patient' ? user.uid : otherPartyId,
+      doctorId: role === 'doctor' ? user.uid : otherPartyId,
+    }, { merge: true }).catch(async (serverError) => {
+       errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: chatRef.path,
+          operation: 'update',
+          requestResourceData: { lastMessage: text, participants }
+       }));
+    });
 
-    await addDoc(collection(db, 'consultationChats', chatId, 'messages'), {
+    const messagesCol = collection(db, 'consultationChats', chatId, 'messages');
+    addDoc(messagesCol, {
       senderUid: user.uid,
       senderRole: role,
       text: text,
       createdAt: serverTimestamp()
+    }).catch(async (serverError) => {
+       errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: messagesCol.path,
+          operation: 'create',
+          requestResourceData: { text, senderUid: user.uid }
+       }));
     });
   };
 
@@ -80,6 +105,16 @@ export default function ChatPage() {
             {isLoading ? (
               <div className="flex items-center justify-center h-full">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : error ? (
+              <div className="flex flex-col items-center justify-center h-full text-center space-y-6 max-w-sm mx-auto">
+                <div className="bg-destructive/10 p-6 rounded-full">
+                   <Lock className="h-12 w-12 text-destructive" />
+                </div>
+                <div className="space-y-2">
+                   <h3 className="text-xl font-bold">Secure Access Required</h3>
+                   <p className="text-sm text-muted-foreground">Preparing your clinical channel. If access is delayed, ensure you are authenticated correctly.</p>
+                </div>
               </div>
             ) : (
               <div className="space-y-4">
