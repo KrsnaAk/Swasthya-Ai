@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -24,11 +23,11 @@ export function LandingCTA() {
     <section className="py-24 relative overflow-hidden">
       <div className="absolute inset-0 bg-primary/5 -z-10" />
       <div className="container mx-auto px-6">
-        <div className="max-w-4xl mx-auto text-center space-y-8 p-12 md:p-20 rounded-3xl bg-card border border-primary/20 relative">
+        <div className="max-w-4xl mx-auto text-center space-y-8 p-12 md:p-20 rounded-3xl bg-card border border-border relative shadow-2xl">
           <div className="absolute -top-10 -left-10 w-40 h-40 bg-primary/10 rounded-full blur-[80px]" />
           <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-accent/10 rounded-full blur-[80px]" />
           
-          <h2 className="text-4xl md:text-5xl font-headline font-black text-white">
+          <h2 className="text-4xl md:text-5xl font-headline font-black text-foreground">
             Get Instant Healthcare <br /> Guidance — <span className="text-primary">Anytime, Anywhere</span>
           </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
@@ -39,7 +38,7 @@ export function LandingCTA() {
             <Button 
               size="lg" 
               onClick={handleStartTriage}
-              className="w-full sm:w-auto h-16 px-10 text-lg font-bold bg-primary text-primary-foreground hover:bg-primary/90 group"
+              className="w-full sm:w-auto h-16 px-10 text-lg font-bold bg-primary text-primary-foreground hover:bg-primary/90 group rounded-2xl"
             >
               <Stethoscope className="mr-2 h-6 w-6" />
               Start Free Triage
@@ -50,14 +49,14 @@ export function LandingCTA() {
                 asChild
                 variant="outline" 
                 size="lg" 
-                className="w-full sm:w-auto h-16 px-10 text-lg font-bold border-white/10 hover:bg-white/5"
+                className="w-full sm:w-auto h-16 px-10 text-lg font-bold border-border bg-background hover:bg-accent rounded-2xl text-foreground"
               >
                 <Link href="/signup">Create Account</Link>
               </Button>
             )}
           </div>
           
-          <div className="text-sm text-muted-foreground font-medium pt-2">
+          <div className="text-sm text-muted-foreground font-bold pt-2 uppercase tracking-widest text-[10px]">
             Works in 10+ Indian languages • Instant Assessment • No Diagnosis
           </div>
         </div>

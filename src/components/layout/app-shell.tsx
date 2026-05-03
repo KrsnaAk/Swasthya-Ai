@@ -132,7 +132,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
-        <Sidebar className="border-r border-white/5 bg-card/80 backdrop-blur-2xl">
+        <Sidebar className="border-r border-border bg-card/80 backdrop-blur-2xl">
           <SidebarHeader className="p-6">
             <NextLink href="/dashboard" className="flex items-center gap-3">
               <div className="bg-primary h-10 w-10 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 heartbeat">
@@ -160,7 +160,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               ))}
             </SidebarMenu>
           </SidebarContent>
-          <SidebarFooter className="p-4 border-t border-white/5">
+          <SidebarFooter className="p-4 border-t border-border">
             <div className="p-4 mb-4 rounded-2xl bg-primary/5 border border-primary/10 flex items-center gap-3 overflow-hidden">
               <div className="h-10 w-10 shrink-0 rounded-xl bg-primary/10 flex items-center justify-center">
                 <User className="h-5 w-5 text-primary" />
@@ -185,7 +185,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </SidebarFooter>
         </Sidebar>
         <SidebarInset className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background">
-          <header className="h-16 flex items-center justify-between px-8 border-b border-white/5 bg-card/30 backdrop-blur-md sticky top-0 z-30">
+          <header className="h-16 flex items-center justify-between px-8 border-b border-border bg-card/30 backdrop-blur-md sticky top-0 z-30">
             <div className="flex items-center gap-4">
               <SidebarTrigger className="md:hidden" />
               <h2 className="font-headline font-bold text-lg medical-gradient-text uppercase tracking-wider">
@@ -220,10 +220,10 @@ function AccessDenied({ title, message, icon, onSignOut, showProfile = false }: 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-background p-8">
       <div className="max-w-md w-full text-center space-y-6">
-        <div className="bg-muted p-8 rounded-full w-fit mx-auto shadow-2xl">
+        <div className="bg-muted p-8 rounded-full w-fit mx-auto shadow-2xl border border-border">
           {icon}
         </div>
-        <h1 className="text-3xl font-headline font-bold">{title}</h1>
+        <h1 className="text-3xl font-headline font-bold text-foreground">{title}</h1>
         <p className="text-muted-foreground leading-relaxed">
           {message}
         </p>

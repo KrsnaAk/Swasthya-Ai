@@ -11,7 +11,7 @@ export function LandingNavbar() {
   const { user } = useUser();
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-white/5 bg-background/40 backdrop-blur-2xl">
+    <nav className="sticky top-0 z-50 w-full border-b border-border bg-background/40 backdrop-blur-2xl">
       <div className="container mx-auto flex h-20 items-center justify-between px-6">
         <Link href="/" className="flex items-center gap-3 group">
           <div className="bg-primary rounded-xl p-2 transition-all group-hover:scale-110 shadow-lg shadow-primary/20 heartbeat">
@@ -34,12 +34,12 @@ export function LandingNavbar() {
         <div className="flex items-center gap-4">
           <ThemeToggle />
           {user ? (
-            <Button asChild variant="secondary" className="font-black uppercase text-xs tracking-widest rounded-xl px-6 h-11 border border-white/5 shadow-xl">
+            <Button asChild variant="secondary" className="font-black uppercase text-xs tracking-widest rounded-xl px-6 h-11 border border-border shadow-xl">
               <Link href="/dashboard">Portal Dashboard</Link>
             </Button>
           ) : (
             <>
-              <Button asChild variant="ghost" className="hidden sm:inline-flex text-xs font-black uppercase tracking-widest">
+              <Button asChild variant="ghost" className="hidden sm:inline-flex text-xs font-black uppercase tracking-widest text-muted-foreground hover:text-primary">
                 <Link href="/login">Login</Link>
               </Button>
               <Button asChild className="bg-primary text-primary-foreground font-black uppercase text-xs tracking-widest shadow-xl shadow-primary/20 rounded-xl px-8 h-11">

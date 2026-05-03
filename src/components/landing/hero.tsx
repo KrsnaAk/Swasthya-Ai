@@ -48,7 +48,7 @@ export function LandingHero() {
           </div>
 
           {/* Title */}
-          <h1 className="text-5xl md:text-7xl font-headline font-black text-white leading-tight animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <h1 className="text-5xl md:text-7xl font-headline font-black text-foreground leading-tight animate-in fade-in slide-in-from-bottom-4 duration-700">
             The Future of <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent"> Clinical Intelligence
             </span>
@@ -86,13 +86,13 @@ export function LandingHero() {
               variant="outline"
               onClick={handleDoctorPortal}
               disabled={isUserLoading}
-              className="h-24 flex flex-col items-center justify-center gap-2 text-lg font-bold border-white/10 bg-white/5 backdrop-blur-md hover:bg-white/10 rounded-3xl"
+              className="h-24 flex flex-col items-center justify-center gap-2 text-lg font-bold border-border bg-card/40 backdrop-blur-md hover:bg-card/60 rounded-3xl"
             >
               {isUserLoading ? (
                 <Loader2 className="animate-spin" />
               ) : (
                 <>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 text-foreground">
                     <ShieldCheck className="h-6 w-6 text-primary" />
                     Doctor Dashboard
                   </div>
@@ -106,13 +106,13 @@ export function LandingHero() {
               variant="ghost"
               onClick={handleAdminPortal}
               disabled={isUserLoading}
-              className="h-24 flex flex-col items-center justify-center gap-2 text-lg font-bold hover:bg-white/5 rounded-3xl border border-dashed border-white/5"
+              className="h-24 flex flex-col items-center justify-center gap-2 text-lg font-bold hover:bg-card/20 rounded-3xl border border-dashed border-border"
             >
               {isUserLoading ? (
                 <Loader2 className="animate-spin" />
               ) : (
                 <>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 text-foreground">
                     <UserCog className="h-6 w-6 text-muted-foreground" />
                     Admin Panel
                   </div>

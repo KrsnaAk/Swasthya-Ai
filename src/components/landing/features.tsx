@@ -57,10 +57,10 @@ const features = [
 
 export function LandingFeatures() {
   return (
-    <section id="features" className="py-24 bg-card/30 border-y border-white/5">
+    <section id="features" className="py-24 bg-card/30 border-y border-border">
       <div className="container mx-auto px-6">
         <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
-          <h2 className="text-4xl md:text-5xl font-headline font-black text-white">
+          <h2 className="text-4xl md:text-5xl font-headline font-black text-foreground">
             Powerful AI Features Designed <br /> for <span className="text-primary">Real-World</span> Healthcare
           </h2>
         </div>
@@ -69,7 +69,7 @@ export function LandingFeatures() {
           {features.map((f, i) => (
             <div 
               key={i} 
-              className="group p-8 rounded-2xl bg-white/5 border border-white/10 hover:border-primary/50 transition-all duration-300 relative overflow-hidden"
+              className="group p-8 rounded-2xl bg-card/60 backdrop-blur-xl border border-border hover:border-primary/50 transition-all duration-300 relative overflow-hidden"
             >
               {/* Glow effect on hover */}
               <div className="absolute -inset-px bg-gradient-to-br from-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
@@ -78,7 +78,7 @@ export function LandingFeatures() {
                 <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
                   <f.icon className="h-6 w-6" />
                 </div>
-                <h3 className="text-xl font-headline font-bold text-white group-hover:text-primary transition-colors">
+                <h3 className="text-xl font-headline font-bold text-foreground group-hover:text-primary transition-colors">
                   {f.title}
                 </h3>
                 <p className="text-muted-foreground text-sm leading-relaxed">
