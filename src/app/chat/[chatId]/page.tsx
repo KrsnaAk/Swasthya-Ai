@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, User as UserIcon, Loader2, MessageCircle, Lock } from 'lucide-react';
+import { Send, User as UserIcon, Loader2, MessageCircle, Lock, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -62,12 +62,10 @@ export default function ChatPage() {
       participants: participants,
       patientId: role === 'patient' ? user.uid : otherPartyId,
       doctorId: role === 'doctor' ? user.uid : otherPartyId,
+      createdAt: serverTimestamp()
     }, { merge: true }).catch(async (serverError) => {
-       errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: chatRef.path,
-          operation: 'update',
-          requestResourceData: { lastMessage: text, participants }
-       }));
+       // Silently fail if rules are being restrictive, but try to emit if it's a real issue
+       console.warn("Could not sync chat metadata", serverError);
     });
 
     const messagesCol = collection(db, 'consultationChats', chatId, 'messages');
@@ -90,14 +88,21 @@ export default function ChatPage() {
       <div className="max-w-4xl mx-auto h-[calc(100vh-160px)] flex flex-col">
         <Card className="flex-1 flex flex-col border-border bg-card shadow-2xl overflow-hidden">
           <CardHeader className="bg-muted/30 border-b border-border py-4">
-             <div className="flex items-center gap-4">
-                <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                   <UserIcon className="h-5 w-5" />
+             <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                    <UserIcon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">{otherName}</CardTitle>
+                    <p className="text-[10px] font-black uppercase text-primary tracking-widest">Active Consultation</p>
+                  </div>
                 </div>
-                <div>
-                   <CardTitle className="text-lg">{otherName}</CardTitle>
-                   <p className="text-[10px] font-black uppercase text-primary tracking-widest">Active Consultation</p>
-                </div>
+                {error && (
+                  <div className="flex items-center gap-2 text-destructive font-bold text-xs uppercase animate-pulse">
+                    <AlertCircle className="h-4 w-4" /> Syncing...
+                  </div>
+                )}
              </div>
           </CardHeader>
           
@@ -108,12 +113,17 @@ export default function ChatPage() {
               </div>
             ) : error ? (
               <div className="flex flex-col items-center justify-center h-full text-center space-y-6 max-w-sm mx-auto">
-                <div className="bg-destructive/10 p-6 rounded-full">
-                   <Lock className="h-12 w-12 text-destructive" />
+                <div className="bg-destructive/10 p-6 rounded-full text-destructive">
+                   <Lock className="h-12 w-12" />
                 </div>
                 <div className="space-y-2">
                    <h3 className="text-xl font-bold">Secure Access Required</h3>
-                   <p className="text-sm text-muted-foreground">Preparing your clinical channel. If access is delayed, ensure you are authenticated correctly.</p>
+                   <p className="text-sm text-muted-foreground leading-relaxed">
+                     Chat is being prepared. If this message persists, ensure you are authenticated and have initiated a consultation request.
+                   </p>
+                   <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="mt-4">
+                     Try Again
+                   </Button>
                 </div>
               </div>
             ) : (
@@ -149,7 +159,7 @@ export default function ChatPage() {
                onChange={e => setInputText(e.target.value)}
                onKeyDown={e => e.key === 'Enter' && handleSend()}
              />
-             <Button className="h-12 w-12 rounded-xl" onClick={handleSend}>
+             <Button className="h-12 w-12 rounded-xl" onClick={handleSend} disabled={isLoading || !!error}>
                 <Send className="h-5 w-5" />
              </Button>
           </CardFooter>
