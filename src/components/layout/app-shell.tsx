@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useMemo } from "react";
@@ -46,13 +47,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [userRole]);
 
   useEffect(() => {
-    // PUBLIC ROUTES - No redirect needed
     const publicPages = ['/login', '/signup', '/forgot-password', '/', '/doctor-auth', '/admin-auth', '/admin-bootstrap', '/admin-create'];
     const isPublicPage = publicPages.includes(pathname);
 
-    // If no user and NOT public page, redirect to correct gateway
     if (!isUserLoading && !user && !isPublicPage) {
-      if (pathname.startsWith('/doctor')) {
+      if (pathname.startsWith('/doctor') && !pathname.startsWith('/doctor-buddy')) {
         router.push('/doctor-auth');
       } else if (pathname.startsWith('/admin')) {
         router.push('/admin-auth');
@@ -92,8 +91,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // 2. Doctor Guard
-  if (pathname.startsWith('/doctor') && userRole !== 'doctor') {
+  // 2. Doctor Guard (Exclude Doctor Buddy patient feature)
+  if (pathname.startsWith('/doctor') && !pathname.startsWith('/doctor-buddy') && userRole !== 'doctor') {
     return (
       <AccessDenied 
         title="Professional Access Only" 
@@ -104,8 +103,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Doctor Verification Screens
-  if (userRole === 'doctor' && pathname.startsWith('/doctor') && pathname !== '/profile') {
+  // Doctor Verification Screens (Apply only to portal paths)
+  if (userRole === 'doctor' && pathname.startsWith('/doctor') && !pathname.startsWith('/doctor-buddy') && pathname !== '/profile') {
     if (verificationStatus === 'pending') {
       return (
         <AccessDenied 

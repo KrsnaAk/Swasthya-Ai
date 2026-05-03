@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -13,7 +14,6 @@ service cloud.firestore {
     }
 
     function isHardcodedAdmin() {
-      // Hardcoded zero-latency override for primary administrator
       return isSignedIn() && request.auth.uid == "Zn1wDP2cfzNglUFfGyVQAi64qSk2";
     }
 
@@ -41,49 +41,37 @@ service cloud.firestore {
     // --- Collection Rules ---
 
     match /users/{userId} {
-      // Allow individual read for self, or admin/doctor clinical lookup
       allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin() || isHardcodedAdmin() || isVerifiedDoctor());
-      
-      // Allow listing for search purposes only for staff
       allow list: if isSignedIn() && (isAdmin() || isHardcodedAdmin() || isVerifiedDoctor());
-      
-      // Self-creation
       allow create: if isSignedIn() && request.auth.uid == userId;
-      
-      // Update by self or admin (admin needed for verification/role assignment)
       allow update: if isSignedIn() && (request.auth.uid == userId || isAdmin() || isHardcodedAdmin());
-      
       allow delete: if isOwner(userId);
 
-      // Sub-collections for health records
       match /triageAssessments/{triageId} {
         allow get, list, create, update, delete: if isOwner(userId);
       }
-
       match /doctorSummaries/{summaryId} {
         allow get, list, create, update, delete: if isOwner(userId);
       }
-
       match /preventiveAssessments/{assessmentId} {
         allow get, list, create, update, delete: if isOwner(userId);
       }
     }
 
+    // Public clinical discovery for patients
+    match /doctors/{doctorId} {
+      allow read, list: if isSignedIn();
+      allow write: if isAdmin() || isHardcodedAdmin();
+    }
+
     match /doctorApplications/{appId} {
-      // Admin can see all applications, doctors can see their own status
       allow read, list: if isHardcodedAdmin() || isAdmin() || (isSignedIn() && appId == request.auth.uid);
-      
-      // Doctors create their own applications
       allow create: if isSignedIn() && appId == request.auth.uid;
-      
-      // Only admins can process applications (update/delete)
       allow update, delete: if isHardcodedAdmin() || isAdmin();
     }
 
     match /consultationChats/{chatId} {
-      // Access allowed if the user's UID is part of the chatId (sorted combo of IDs)
       allow read, write: if isSignedIn() && (chatId.contains(request.auth.uid));
-      
       match /messages/{msgId} {
         allow read, write: if isSignedIn() && (chatId.contains(request.auth.uid));
       }
@@ -98,7 +86,6 @@ service cloud.firestore {
     }
 
     match /medical_imaging_reports/{reportId} {
-      // Access for owner, verified doctor for review, or admin
       allow get, list: if isSignedIn() && (resource.data.userId == request.auth.uid || isVerifiedDoctor() || isAdmin() || isHardcodedAdmin());
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isVerifiedDoctor() || isAdmin() || isHardcodedAdmin());
@@ -109,11 +96,8 @@ service cloud.firestore {
        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
 
-    // New Rules for the Consultation Feature
     match /preConsultations/{consultationId} {
       allow create: if isSignedIn();
-      
-      // Allow access for owners, assigned doctors, and clinical oversight
       allow get, list: if isSignedIn() && (
         isAdmin() || 
         isHardcodedAdmin() || 
@@ -121,7 +105,6 @@ service cloud.firestore {
         resource.data.userId == request.auth.uid || 
         resource.data.patientId == request.auth.uid
       );
-      
       allow update: if isSignedIn() && (
         isAdmin() || 
         isHardcodedAdmin() || 
@@ -130,7 +113,6 @@ service cloud.firestore {
         resource.data.patientId == request.auth.uid || 
         resource.data.doctorId == request.auth.uid
       );
-
       allow delete: if isHardcodedAdmin() || isAdmin();
     }
   }

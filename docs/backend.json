@@ -96,6 +96,25 @@
         "updatedAt"
       ]
     },
+    "DoctorProfile": {
+      "type": "object",
+      "description": "Public clinical profile for medical professionals available for discovery.",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "specialization": { "type": "string" },
+        "clinicName": { "type": "string" },
+        "city": { "type": "string" },
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "experienceYears": { "type": "number" },
+        "rating": { "type": "number" },
+        "availability": { "type": "string" },
+        "consultationFee": { "type": "number" },
+        "verified": { "type": "boolean" }
+      },
+      "required": ["id", "name", "specialization", "clinicName"]
+    },
     "ChatTriageRecord": {
       "type": "object",
       "properties": {
@@ -128,6 +147,15 @@
           "entityName": "UserProfile",
           "schema": {
             "$ref": "#/backend/entities/UserProfile"
+          }
+        }
+      },
+      {
+        "path": "/doctors/{doctorId}",
+        "definition": {
+          "entityName": "DoctorProfile",
+          "schema": {
+            "$ref": "#/backend/entities/DoctorProfile"
           }
         }
       },
